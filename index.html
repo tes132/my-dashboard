@@ -2,9 +2,14 @@
 
 <h2>오늘 할 일</h2>
 
-<input type="text">
-<button>추가</button>
+<input type="text" id="todoInput">
+<button onclick="addTodo()">추가</button>
 
-<p>수학 공부</p>
-<p>영어 단어</p>
-<p>Python 공부</p>
+<p id="result"></p>
+
+<script>
+function addTodo() {
+    let todo = document.getElementById("todoInput").value;
+    document.getElementById("result").textContent = todo;
+}
+</script>
