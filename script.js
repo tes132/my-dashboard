@@ -2674,7 +2674,7 @@ function createCategoryBox(
 
 
             saveCategories();
-                refreshTodoViews();
+            refreshTodoViews();
 
         }
     );
@@ -2771,7 +2771,7 @@ function createTodoInputArea(
         });
 
         saveCategories();
-            refreshTodoViews(true);
+        refreshTodoViews(true);
     }
 
     saveButton.addEventListener("click", saveTodo);
@@ -3065,7 +3065,7 @@ function createTodoItem(
                 }
 
                 saveCategories();
-            refreshTodoViews(true);
+                refreshTodoViews(true);
             }
 
             saveButton.addEventListener("click", saveEdit);
@@ -3668,7 +3668,7 @@ function addCategory() {
 
 
     saveCategories();
-                refreshTodoViews();
+    refreshTodoViews();
 
     loadStopwatchCategories();
 }
