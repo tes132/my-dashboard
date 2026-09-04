@@ -1,0 +1,2271 @@
+/* My Dashboard - refactored CSS
+*/
+
+body {
+    font-family: Arial, sans-serif;
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 20px;
+    padding-bottom: 90px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+button {
+    padding: 9px 14px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+}
+
+button:hover {
+    background-color: #f5f5f5;
+}
+
+.feature-section {
+    margin-top: 25px;
+}
+
+.empty-section {
+    text-align: center;
+    padding: 80px 20px;
+    color: #777;
+}
+
+#clock {
+    text-align: center;
+    font-size: 32px;
+    margin-bottom: 30px;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 430px 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.calendar {
+    width: 100%;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.calendar-header h2 {
+    width: 150px;
+    text-align: center;
+    font-size: 20px;
+}
+
+.calendar-header button {
+    border: none;
+    background: none;
+    font-size: 25px;
+    cursor: pointer;
+    padding: 5px 10px;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.weekdays div {
+    padding: 5px;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.calendar-day {
+    height: 55px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-day:hover {
+    background-color: #f5f5f5;
+}
+
+.calendar-day.empty {
+    border: none;
+    cursor: default;
+}
+
+.day-number {
+    font-size: 13px;
+}
+
+.day-todo-count {
+    margin-top: auto;
+    font-size: 11px;
+}
+
+.calendar-day.selected {
+    border: 2px solid black;
+}
+
+.calendar-day.today .day-number {
+    font-weight: bold;
+}
+
+.todo-section {
+    min-width: 0;
+}
+
+.todo-section h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+#todoCount {
+    margin-top: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.category {
+    margin-top: 25px;
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+}
+
+.category-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.category-add-button {
+    margin-left: auto;
+    border: none;
+    background: none;
+    font-size: 22px;
+    padding: 2px 8px;
+}
+
+.category-delete-button {
+    border: none;
+    background: none;
+    color: #888;
+    font-size: 12px;
+    padding: 5px;
+}
+
+.category-todo-list {
+    padding: 0;
+    margin: 8px 0 0 0;
+    list-style: none;
+}
+
+.category-todo-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    padding: 8px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    min-width: 0;
+    position: relative;
+    padding-right: 45px;
+}
+
+.category-todo-list li input[type="checkbox"] {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.todo-priority {
+    flex: 0 0 22px;
+    width: 22px;
+    margin: 0;
+    text-align: center;
+    line-height: 1;
+}
+
+.todo-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.todo-edit-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.todo-edit-input:focus {
+    border-color: #888;
+}
+
+.todo-button {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 5px;
+}
+
+.add-category-button {
+    margin-top: 25px;
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed #ccc;
+    background: white;
+    border-radius: 6px;
+    color: #666;
+}
+
+.todo-input-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    margin-top: 10px;
+    padding: 8px 0;
+    box-sizing: border-box;
+}
+
+.todo-input-first-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+.todo-input-first-row .todo-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 38px;
+    box-sizing: border-box;
+}
+
+.todo-input-first-row .todo-button {
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 13px;
+    white-space: nowrap;
+}
+
+.todo-input-second-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    padding-left: 25px;
+}
+
+.todo-input-second-row .todo-priority-select {
+    width: 100px;
+}
+
+.todo-input-second-row .todo-repeat-select {
+    width: 110px;
+}
+
+.todo-input-second-row .todo-deadline-input {
+    width: 120px;
+}
+
+.todo-input-area input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.todo-input-area input:focus {
+    border-color: #888;
+}
+
+.todo-priority-select {
+    flex: 0 0 auto;
+    padding: 8px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.todo-repeat-select {
+    flex: 0 0 auto;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.memo-header h2 {
+    margin: 0;
+}
+
+#newMemoButton {
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 6px;
+}
+
+.memo-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.memo-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    cursor: grab;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.memo-card:active {
+    cursor: grabbing;
+}
+
+.memo-card:dragging {
+    opacity: 0.5;
+}
+
+.memo-card:hover {
+    background: #f8f8f8;
+}
+
+.memo-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+}
+
+.memo-card p {
+    margin: 0;
+    color: #555;
+    font-size: 14px;
+    white-space: pre-wrap;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+.memo-date {
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 11px;
+    color: #999;
+}
+
+.memo-delete-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 7px;
+    font-size: 11px;
+    color: #888;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 5px;
+}
+
+.memo-drag-handle {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    font-size: 16px;
+    color: #888;
+    cursor: grab;
+    user-select: none;
+}
+
+.memo-drag-handle:active {
+    cursor: grabbing;
+}
+
+.memo-card.dragging {
+    opacity: 0.45;
+}
+
+.memo-drop-placeholder {
+    min-height: 120px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    opacity: 0.6;
+}
+
+.memo-editor {
+    display: none;
+    margin-top: 20px;
+}
+
+.memo-editor input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.memo-editor>input#memoTitle {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.memo-toolbar input {
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.memo-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.memo-toolbar>button {
+    width: 40px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.memo-editor .memo-font-size {
+    width: 70px;
+    height: 38px;
+    flex: 0 0 70px;
+    box-sizing: border-box;
+    padding: 0 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    margin: 0;
+}
+
+.memo-color-button,
+.memo-highlight-button {
+    width: 108px;
+    height: 38px;
+    flex: 0 0 108px;
+    box-sizing: border-box;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid #ccc;
+    background: white;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.memo-color-button input[type="color"],
+.memo-highlight-button input[type="color"] {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    cursor: pointer;
+}
+
+.memo-content {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 250px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    outline: none;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.memo-content:focus {
+    border-color: #999;
+}
+
+.memo-content:empty::before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    pointer-events: none;
+}
+
+.memo-toolbar button,
+.memo-toolbar label,
+.memo-toolbar select,
+.memo-toolbar input {
+    user-select: none;
+}
+
+.schedule-container {
+    display: grid;
+    grid-template-columns: 430px 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.schedule-clock-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.schedule-panel {
+    min-width: 0;
+}
+
+.schedule-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.schedule-panel-header h2 {
+    margin: 0;
+}
+
+.analog-clock {
+    position: relative;
+    width: 380px;
+    height: 380px;
+    border: 3px solid #333;
+    border-radius: 50%;
+    background: white;
+    overflow: hidden;
+}
+
+#scheduleArcs {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.schedule-arc {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#clockTicks {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.clock-tick {
+    position: absolute;
+    width: 2px;
+    height: 9px;
+    background: #555;
+    left: 50%;
+    top: 3px;
+    transform-origin: 50% 187px;
+    margin-left: -1px;
+}
+
+#clockNumbers {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.clock-number {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 15px;
+    font-weight: bold;
+    color: #222;
+    line-height: 1;
+}
+
+.clock-hand {
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    transform-origin: 50% 100%;
+    border-radius: 4px;
+    z-index: 5;
+}
+
+.hour-hand {
+    width: 4px;
+    height: 115px;
+    margin-left: -2px;
+    background: #222;
+}
+
+.clock-center {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    border-radius: 50%;
+    z-index: 6;
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.schedule-card {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-left: 5px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    background: white;
+    padding-right: 14px;
+}
+
+.schedule-card:hover {
+    background: #f8f8f8;
+}
+
+.schedule-card-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    padding-right: 40px;
+}
+
+.schedule-card-time {
+    font-size: 13px;
+    color: #555;
+}
+
+.schedule-card-description {
+    margin-top: 7px;
+    font-size: 13px;
+    color: #777;
+    white-space: pre-wrap;
+}
+
+.schedule-editor {
+    display: none;
+    margin-top: 20px;
+    padding: 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.schedule-editor-first-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.schedule-todo-check {
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.schedule-title-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 46px;
+    box-sizing: border-box;
+    padding: 0 14px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    display: block;
+    width: 100%;
+    background: white;
+}
+
+.schedule-title-input:focus {
+    border-color: #888;
+}
+
+.schedule-editor-first-row button {
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 13px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+.schedule-editor-first-row button:hover {
+    background: #f5f5f5;
+}
+
+.schedule-editor-second-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-left: 25px;
+    flex-wrap: wrap;
+}
+
+.schedule-priority,
+.schedule-repeat-select {
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 9px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.schedule-start-time {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.schedule-start-time input[type="time"] {
+    width: 125px;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 30px 0 9px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.schedule-time-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 14px;
+}
+
+.schedule-editor-extra {
+    display: none;
+}
+
+.schedule-delete-button {
+    color: #888;
+}
+
+.schedule-repeat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 15px;
+    margin-top: 16px;
+}
+
+.schedule-repeat label {
+    font-size: 13px;
+}
+
+.schedule-repeat select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    font-family: inherit;
+    cursor: pointer;
+    height: 42px;
+    font-size: 14px;
+}
+
+.dday-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.dday-header h2 {
+    margin: 0;
+}
+
+.dday-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.dday-card {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+}
+
+.dday-card:hover {
+    background: #f8f8f8;
+}
+
+.dday-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 17px;
+    padding-right: 35px;
+}
+
+.dday-date {
+    font-size: 12px;
+    color: #999;
+}
+
+.dday-number {
+    margin-top: auto;
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.dday-drag-handle {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    font-size: 16px;
+    color: #888;
+    cursor: grab;
+    user-select: none;
+}
+
+.dday-drag-handle:active {
+    cursor: grabbing;
+}
+
+.dday-card.dragging {
+    opacity: 0.5;
+}
+
+.dday-editor {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.dday-editor input[type="text"],
+.dday-editor input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    margin-bottom: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.dday-editor label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.dday-editor-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.feature-menu {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: min(1100px, calc(100% - 40px));
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 20px;
+    border-top: 1px solid #ddd;
+    background: white;
+    z-index: 1000;
+}
+
+.feature-button {
+    border: none;
+    background: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.feature-button:hover {
+    background: #f3f3f3;
+}
+
+.feature-button.active {
+    background: #f3f3f3;
+    font-weight: bold;
+}
+
+.feature-icon {
+    font-size: 20px;
+}
+
+.feature-name {
+    font-size: 12px;
+}
+
+@media (max-width: 800px) {
+    .dashboard,
+    .schedule-container {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar,
+    .schedule-clock-area {
+        max-width: 430px;
+        margin: 0 auto;
+    }
+
+    .memo-list,
+    .dday-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 550px) {
+    body {
+        margin: 20px auto;
+        padding: 0 12px;
+        padding-bottom: 90px;
+    }
+
+    .dashboard,
+    .schedule-container {
+        gap: 25px;
+    }
+
+    .analog-clock {
+        width: 300px;
+        height: 300px;
+    }
+
+    .hour-hand {
+        height: 90px;
+    }
+
+    .memo-list,
+    .dday-list {
+        grid-template-columns: 1fr;
+    }
+
+    .feature-menu {
+        gap: 2px;
+    }
+
+    .feature-button {
+        padding: 8px 10px;
+    }
+}
+
+.todo-filter {
+    display: flex;
+    gap: 8px;
+    margin: 15px 0 20px 0;
+}
+
+.todo-filter-button {
+    padding: 7px 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+.todo-filter-button:hover {
+    background: #f5f5f5;
+    background-color: #f5f5f5;
+}
+
+.todo-filter-button.active {
+    background: #f3f3f3;
+    border-color: #999;
+    font-weight: bold;
+    background-color: #f3f3f3;
+}
+
+.week-day-title {
+    margin-top: 25px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #ddd;
+    font-size: 17px;
+}
+
+.week-day-title:first-child {
+    margin-top: 0;
+}
+
+.week-category {
+    margin-top: 15px;
+}
+
+.week-category .category-header {
+    border-bottom: none;
+    padding-bottom: 2px;
+}
+
+.week-category .category-header h3 {
+    font-size: 15px;
+    color: #555;
+}
+
+.completed-todo-toggle {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    background: #f5f5f5;
+    color: #777;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.completed-todo-toggle:hover {
+    background: #eeeeee;
+}
+
+.completed-todo-list {
+    margin-top: 4px;
+}
+
+.completed-todo-list li {
+    opacity: 0.65;
+}
+
+.todo-deadline-input {
+    width: 125px !important;
+    padding: 0 30px 0 9px !important;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    height: 34px;
+}
+
+.todo-deadline {
+    flex: 0 0 auto;
+    color: #777;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.weekly-study {
+    margin-top: 30px;
+}
+
+.weekly-study h3 {
+    margin-bottom: 15px;
+}
+
+#weeklyStudyChart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 220px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+.weekly-study-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    flex: 1;
+}
+
+.weekly-study-bar-value {
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+.weekly-study-bar-fill {
+    width: 35px;
+    min-height: 2px;
+    border-radius: 5px 5px 0 0;
+    background-color: #4a90e2;
+}
+
+.weekly-study-bar-label {
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.weekly-study-bar.today .weekly-study-bar-label {
+    font-weight: bold;
+}
+
+.weekly-study-bar.today .weekly-study-bar-fill {
+    transform: scaleX(1.2);
+}
+
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.project-header h2 {
+    margin: 0;
+}
+
+.project-list {
+    display: grid;
+    grid-template-columns: repeat(
+            auto-fit,
+            minmax(300px, 1fr)
+        );
+    gap: 22px;
+}
+
+.project-item {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 360px;
+    box-sizing: border-box;
+    background: white;
+    padding-right: 20px;
+}
+
+.project-item h3 {
+    margin: 0 0 14px 0;
+    font-size: 20px;
+    padding-right: 40px;
+}
+
+.project-item > p {
+    margin: 8px 0;
+    color: #555;
+}
+
+.project-item > p:nth-child(3) {
+    font-size: 14px;
+}
+
+.project-item label {
+    display: block;
+    margin: 8px 0;
+    font-size: 15px;
+}
+
+.project-item input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+.project-buttons {
+    display: flex;
+    gap: 6px;
+    margin-top: 18px;
+}
+
+.project-buttons button {
+    padding: 8px 13px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    cursor: pointer;
+}
+
+.project-editor {
+    margin-top: 25px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+}
+
+#projectTitle {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 16px;
+}
+
+.project-date {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.project-date > div {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.project-date label {
+    font-size: 13px;
+    color: #666;
+}
+
+.project-date input {
+    padding: 9px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+}
+
+#projectItems {
+    width: 100%;
+    min-height: 180px;
+    margin-top: 15px;
+    padding: 12px;
+    box-sizing: border-box;
+    resize: vertical;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 15px;
+}
+
+.project-editor-buttons {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.project-editor-buttons button {
+    padding: 9px 16px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    cursor: pointer;
+}
+
+.project-date-text {
+    margin: 0 0 20px 0;
+    color: #777;
+    font-size: 14px;
+}
+
+.project-progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    font-size: 14px;
+    color: #555;
+}
+
+.project-progress-bar {
+    width: 100%;
+    height: 7px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #eee;
+}
+
+.project-progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: #555;
+    transition: width 0.2s ease;
+}
+
+.project-task-list {
+    max-height: 190px;
+    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    box-sizing: border-box;
+}
+
+.project-task-list label {
+    display: block;
+    margin-bottom: 9px;
+    font-size: 15px;
+}
+
+.project-more-button {
+    display: block;
+    margin-top: 10px;
+    padding: 5px 0;
+    border: none;
+    background: none;
+    color: #777;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.project-task-list.expanded {
+    max-height: 190px;
+    overflow: visible;
+    overflow-y: auto;
+}
+
+.action-menu {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 50;
+    width: 34px;
+    height: 34px;
+    margin: 0 !important;
+    padding: 0;
+}
+
+.memo-drag-handle,
+.dday-drag-handle,
+.project-drag-handle {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    color: #999;
+    cursor: grab;
+    user-select: none;
+    width: 30px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 40;
+}
+
+.memo-card,
+.dday-card,
+.project-item,
+.schedule-card {
+    position: relative;
+}
+
+.action-menu-trigger {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    color: #666;
+}
+
+.action-menu-trigger:hover {
+    background: #f2f2f2;
+    color: #222;
+}
+
+.action-menu-list {
+    position: absolute;
+    top: 38px;
+    right: 0;
+    min-width: 88px;
+    display: none;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+    z-index: 100;
+}
+
+.action-menu.open .action-menu-list {
+    display: block;
+}
+
+.action-menu-item {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    text-align: left;
+    background: white;
+    font-size: 13px;
+}
+
+.action-menu-item:hover {
+    background: #f4f4f4;
+}
+
+.memo-drag-handle:active,
+.dday-drag-handle:active,
+.project-drag-handle:active {
+    cursor: grabbing;
+}
+
+.category-todo-list li .action-menu {
+    top: 50%;
+    right: 5px;
+    transform: translateY(-50%);
+}
+
+.project-item.dragging {
+    opacity: 0.5;
+}
+
+.schedule-card .action-menu {
+    top: 50%;
+    right: 3px;
+    transform: translateY(-50%);
+}
+
+.todo-new-checkbox {
+    flex: 0 0 auto !important;
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0;
+}
+
+.todo-input-second-row select {
+    height: 34px;
+    box-sizing: border-box;
+}
+
+.todo-deadline-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.todo-time-icon {
+    position: absolute;
+    right: 8px;
+    pointer-events: none;
+}
+
+.memo-viewer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.memo-viewer-overlay.open {
+    display: flex;
+}
+
+.memo-viewer-modal {
+    width: min(800px, 100%);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.memo-viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 15px 18px;
+    border-bottom: 1px solid #eee;
+}
+
+.memo-viewer-title {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.memo-viewer-close {
+    flex: 0 0 auto;
+    border: none;
+    background: transparent;
+    font-size: 26px;
+    line-height: 1;
+    padding: 4px 8px;
+}
+
+.memo-viewer-content {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px;
+    overflow-wrap: anywhere;
+}
+
+.schedule-time-field,
+.schedule-color-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.schedule-time-field label,
+.schedule-color-field label {
+    font-size: 13px;
+    color: #666;
+}
+
+.schedule-time-field input[type="time"] {
+    width: 125px;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+}
+
+.schedule-color-field input[type="color"] {
+    width: 42px;
+    height: 34px;
+    padding: 2px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+}
+
+.schedule-description-input {
+    display: block;
+    width: 100%;
+    min-height: 100px;
+    margin-top: 18px;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    margin: 0;
+}
+
+.schedule-description-input:focus {
+    outline: none;
+    border-color: #888;
+}
+
+@media (max-width: 700px) {
+    .todo-input-first-row {
+        flex-wrap: wrap;
+    }
+
+    .todo-input-first-row .todo-input {
+        flex: 1 1 calc(100% - 30px);
+    }
+
+    .todo-input-second-row {
+        flex-wrap: wrap;
+    }
+
+    .schedule-editor-second-row {
+        padding-left: 0;
+    }
+
+    .schedule-description-input {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+.schedule-todo-area {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.schedule-todo-title {
+    margin-bottom: 6px;
+    font-size: 17px;
+}
+
+.schedule-todo-list {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start;
+    gap: 5px;
+    width: 100%;
+    max-height: 130px;
+    overflow-y: auto;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.schedule-todo-list label {
+    display: block !important;
+    width: 100%;
+    line-height: 1.5;
+    cursor: pointer;
+    margin: 0;
+}
+
+.schedule-todo-list input[type="checkbox"] {
+    margin-right: 6px;
+}
+
+.schedule-time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 16px;
+}
+
+.schedule-field {
+    min-width: 0;
+}
+
+.schedule-field label,
+.schedule-repeat label,
+.schedule-color label,
+.schedule-description label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 15px;
+}
+
+.schedule-field input[type="time"] {
+    width: 100%;
+    height: 42px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.schedule-color {
+    margin-top: 15px;
+}
+
+.schedule-color input[type="color"] {
+    display: block;
+    width: 94px;
+    height: 44px;
+    padding: 4px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    background: white;
+}
+
+.schedule-editor-todo-slot {
+    margin-top: 18px;
+}
+
+.schedule-description {
+    margin-top: 18px;
+}
+
+.schedule-editor-buttons {
+    display: flex !important;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.schedule-editor-buttons button {
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    background: white;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.schedule-editor-buttons button:hover {
+    background: #f5f5f5;
+}
+
+.schedule-editor-first-row,
+.schedule-editor-second-row,
+.schedule-editor-title-row,
+.schedule-editor-time-row {
+    display: none !important;
+}
+
+
+/* ============================================================
+   카테고리 색상
+   ============================================================ */
+
+.category-color-input {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 2px;
+    margin-left: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: white;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.category-color-input:hover {
+    background: white;
+}
+
+
+/* ============================================================
+   스톱워치 카테고리 색상 표시
+   ============================================================ */
+
+.stopwatch-category-wrap {
+    display: flex;
+    align-items: center;
+    width: calc(100% - 100px);
+    max-width: 650px;
+    margin: 0 auto 24px auto;
+}
+
+.stopwatch-category-color {
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    background: transparent;
+    box-sizing: border-box;
+}
+
+#stopwatchSection #stopwatchCategory {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    margin: 0;
+}
+
+
+/* ============================================================
+   공부 기록 색상
+   ============================================================ */
+
+.study-record-item,
+.stats-category-item,
+.statistics-ratio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.study-record-color,
+.stats-color-dot {
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+
+/* ============================================================
+   통계 도넛
+   ============================================================ */
+
+.category-study-donut {
+    width: 190px;
+    height: 190px;
+    margin: 20px auto 25px auto;
+    border-radius: 50%;
+    background: #eee;
+    position: relative;
+}
+
+.category-study-donut::after {
+    content: "";
+    position: absolute;
+    inset: 32%;
+    border-radius: 50%;
+    background: white;
+}
+
+
+/* ============================================================
+   모바일 보정
+   ============================================================ */
+
+@media (max-width: 700px) {
+    .stopwatch-category-wrap {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+
+
+
+
+/* ============================================================
+   Todo 카테고리 색상
+   ============================================================ */
+
+.category-color-input {
+    flex: 0 0 26px;
+    width: 26px;
+    height: 26px;
+    padding: 2px;
+    margin-left: 8px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.category-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.category-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+
+.category-todo-list li {
+    border-left: 1px solid #eee;
+}
+
+.category-todo-list li.todo-priority-high {
+    border-left: 5px solid #e53935;
+    padding-left: 6px;
+}
+
+.category-todo-list li.todo-priority-normal,
+.category-todo-list li.todo-priority-low {
+    border-left: 1px solid #eee;
+}
+
+.todo-priority {
+    display: none;
+}
+
+
+/* ============================================================
+   일정 연결 Todo 색상
+   ============================================================ */
+
+.schedule-todo-option {
+    display: flex !important;
+    align-items: center;
+    gap: 7px;
+}
+
+.schedule-todo-color {
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+
+/* ============================================================
+   스톱워치 / 공부 기록
+   ============================================================ */
+
+.study-record-item {
+    padding: 6px 0;
+}
+
+.study-record-color,
+.stats-color-dot {
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+
+/* ============================================================
+   통계 카테고리 + 도넛
+   ============================================================ */
+
+.stats-category-content {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
+    gap: 30px;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.stats-category-item {
+    min-height: 48px;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+}
+
+.statistics-panel {
+    min-width: 0;
+}
+
+.category-study-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+}
+
+.category-study-donut {
+    flex: 0 0 190px;
+    width: 190px;
+    height: 190px;
+    margin: 0;
+    border-radius: 50%;
+    background: #eee;
+    position: relative;
+}
+
+.category-study-donut::after {
+    content: "";
+    position: absolute;
+    inset: 32%;
+    border-radius: 50%;
+    background: white;
+}
+
+.category-study-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 130px;
+}
+
+.statistics-ratio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+    .stats-category-content {
+        grid-template-columns: 1fr;
+    }
+
+    .category-study-visual {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 550px) {
+    .category-study-visual {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+
+/* ============================================================
+   스톱워치 화면
+   ============================================================ */
+
+#stopwatchSection .stopwatch-container {
+    width: 100%;
+    text-align: center;
+}
+
+#stopwatchSection #stopwatchDisplay {
+    width: 100%;
+    min-height: 120px;
+    margin: 10px auto 28px auto;
+    box-sizing: border-box;
+    font-size: 64px;
+    font-weight: bold;
+    line-height: 1;
+    letter-spacing: 2px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#stopwatchSection .stopwatch-category-wrap {
+    width: min(650px, 100%);
+    margin: 0 auto 24px auto;
+    text-align: left;
+}
+
+#stopwatchSection .stopwatch-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto 35px auto;
+}
+
+#stopwatchSection .stopwatch-buttons button {
+    min-width: 90px;
+}
+
+#stopwatchSection #studyRecordSection {
+    text-align: left;
+}
+
+
+/* ============================================================
+   통계 상단 요약 카드
+   ============================================================ */
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.stats-card {
+    min-width: 0;
+    min-height: 125px;
+    box-sizing: border-box;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.stats-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.stats-card-header span,
+.stats-card > span {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.stats-card strong {
+    display: block;
+    margin-top: 15px;
+    font-size: 24px;
+    line-height: 1.3;
+}
+
+.stats-card-header button {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   Todo 우선순위 색상
+   ============================================================ */
+
+.category-todo-list li.todo-priority-high {
+    border-left: 5px solid #e53935;
+    padding-left: 6px;
+}
+
+.category-todo-list li.todo-priority-normal {
+    border-left: 5px solid #fbc02d;
+    padding-left: 6px;
+}
+
+.category-todo-list li.todo-priority-low {
+    border-left: 5px solid #43a047;
+    padding-left: 6px;
+}
+
+
+/* ============================================================
+   카테고리별 공부시간 기간 선택
+   ============================================================ */
+
+.stats-category-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 15px;
+    padding-top: 5px;
+}
+
+.stats-category {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.stats-category-header h3 {
+    margin: 0;
+}
+
+.stats-period-selector {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.stats-period-button {
+    padding: 7px 13px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.stats-period-button:hover {
+    background: #f5f5f5;
+}
+
+.stats-period-button.active {
+    background: #f3f3f3;
+    border-color: #999;
+    font-weight: bold;
+}
+
+@media (max-width: 700px) {
+    .stats-summary {
+        grid-template-columns: 1fr;
+    }
+
+    #stopwatchSection #stopwatchDisplay {
+        min-height: 100px;
+        font-size: 48px;
+    }
+}
+
+@media (max-width: 550px) {
+    #stopwatchSection #stopwatchDisplay {
+        font-size: 40px;
+        letter-spacing: 1px;
+    }
+
+    .stats-category-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+}

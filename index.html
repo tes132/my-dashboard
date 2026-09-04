@@ -1,15 +1,699 @@
-<h1>My Dashboard</h1>
+<!DOCTYPE html>
+<html>
 
-<h2>오늘 할 일</h2>
+<head>
+    <title>My Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
 
-<input type="text" id="todoInput">
-<button onclick="addTodo()">추가</button>
+<body>
 
-<p id="result"></p>
+    <h1>My Dashboard</h1>
 
-<script>
-function addTodo() {
-    let todo = document.getElementById("todoInput").value;
-    document.getElementById("result").textContent = todo;
-}
-</script>
+    <div id="clock">00:00:00</div>
+
+
+    <!-- ==================== -->
+    <!-- Todo 화면 -->
+    <!-- ==================== -->
+
+    <div id="todoSection" class="feature-section">
+
+        <div class="dashboard">
+
+            <!-- 왼쪽 : 달력 -->
+            <div class="calendar">
+
+                <div class="calendar-header">
+
+                    <button id="prevMonth">‹</button>
+
+                    <h2 id="monthTitle"></h2>
+
+                    <button id="nextMonth">›</button>
+
+                </div>
+
+
+                <div class="weekdays">
+
+                    <div>월</div>
+                    <div>화</div>
+                    <div>수</div>
+                    <div>목</div>
+                    <div>금</div>
+                    <div>토</div>
+                    <div>일</div>
+
+                </div>
+
+
+                <div id="calendarDays" class="calendar-days"></div>
+
+            </div>
+
+
+            <!-- 오른쪽 : Todo -->
+            <div class="todo-section">
+
+                <h2 id="selectedDateTitle">
+                    오늘 할 일
+                </h2>
+
+                <p id="todoCount">
+                    남은 할 일: 0개
+                </p>
+
+                <div class="todo-filter">
+
+                    <button id="todayFilter" class="todo-filter-button active">
+                        오늘
+                    </button>
+
+                    <button id="tomorrowFilter" class="todo-filter-button">
+                        내일
+                    </button>
+
+                    <button id="weekFilter" class="todo-filter-button">
+                        이번 주
+                    </button>
+
+                </div>
+
+
+                <div id="categoryList"></div>
+
+
+                <button id="addCategoryButton" class="add-category-button">
+                    + 카테고리 추가
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 메모 화면 -->
+    <!-- ==================== -->
+
+    <div id="memoSection" class="feature-section" style="display: none;">
+
+        <div class="memo-header">
+
+            <h2>📝 메모</h2>
+
+            <button id="newMemoButton">
+                + 새 메모
+            </button>
+
+        </div>
+
+
+        <div id="memoList" class="memo-list"></div>
+
+
+        <!-- 메모 작성 / 수정 -->
+
+        <div id="memoEditor" class="memo-editor">
+
+            <input type="text" id="memoTitle" placeholder="제목">
+
+
+            <div class="memo-toolbar">
+
+                <!-- 굵게 -->
+                <button type="button" id="memoBoldButton" title="굵게">
+                    <b>B</b>
+                </button>
+
+
+                <!-- 기울임 -->
+                <button type="button" id="memoItalicButton" title="기울임">
+                    <i>I</i>
+                </button>
+
+
+                <!-- 밑줄 -->
+                <button type="button" id="memoUnderlineButton" title="밑줄">
+                    <u>U</u>
+                </button>
+
+
+                <!-- 글씨 크기 -->
+                <input type="number" id="memoFontSize" class="memo-font-size" value="16" min="10" max="50" step="1"
+                    title="글씨 크기 (10~50px)" />
+
+                <!-- 글자색 -->
+                <label class="memo-color-button" title="글자색">
+                    글자색
+                    <input type="color" id="memoTextColor" value="#000000">
+                </label>
+
+
+                <!-- 배경색 -->
+                <label class="memo-highlight-button" title="배경색">
+                    배경색
+                    <input type="color" id="memoBackgroundColor" value="#ffff00">
+                </label>
+
+            </div>
+
+
+            <div id="memoContent" class="memo-content" contenteditable="true" data-placeholder="내용을 입력하세요"></div>
+
+            <div class="memo-editor-buttons">
+
+                <button id="saveMemoButton">
+                    저장
+                </button>
+
+                <button id="cancelMemoButton">
+                    취소
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 일정 화면 -->
+    <!-- ==================== -->
+
+    <div id="scheduleSection" class="feature-section" style="display: none;">
+
+        <div class="schedule-container">
+
+            <!-- 왼쪽 : 24시간 시계 -->
+            <div class="schedule-clock-area">
+
+                <div class="analog-clock">
+
+                    <!-- 일정 색상 -->
+                    <div id="scheduleArcs"></div>
+
+                    <!-- 24시간 눈금 -->
+                    <div id="clockTicks"></div>
+
+                    <!-- 24시간 숫자 -->
+                    <div id="clockNumbers"></div>
+
+                    <!-- 현재 시간 바늘 -->
+                    <div id="hourHand" class="clock-hand hour-hand"></div>
+
+                    <!-- 가운데 점 -->
+                    <div class="clock-center"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- 오른쪽 : 일정 -->
+            <div class="schedule-panel">
+
+                <div class="schedule-panel-header">
+
+                    <h2 id="scheduleDateTitle">
+                        오늘 일정
+                    </h2>
+
+                    <button id="newScheduleButton">
+                        + 일정 추가
+                    </button>
+
+                </div>
+
+
+                <div id="scheduleList" class="schedule-list"></div>
+
+
+                <!-- 일정 작성 -->
+                <div id="scheduleEditor" class="schedule-editor">
+
+                    <!-- 제목 -->
+                    <input type="text" id="scheduleTitle" class="schedule-title-input" placeholder="일정 이름">
+
+
+                    <!-- 시작 / 종료 -->
+                    <div class="schedule-time-row">
+
+                        <div class="schedule-field">
+                            <label for="scheduleStart">시작</label>
+
+                            <div class="schedule-time-input-wrap">
+                                <input type="time" id="scheduleStart">
+                            </div>
+                        </div>
+
+
+                        <div class="schedule-field">
+                            <label for="scheduleEnd">종료</label>
+
+                            <div class="schedule-time-input-wrap">
+                                <input type="time" id="scheduleEnd">
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <!-- 반복 -->
+                    <div class="schedule-repeat">
+                        <label for="scheduleRepeat">반복</label>
+
+                        <select id="scheduleRepeat">
+                            <option value="none">오늘만</option>
+                            <option value="daily">매일</option>
+                            <option value="weekly">매주</option>
+                        </select>
+                    </div>
+
+
+                    <!-- 색상 -->
+                    <div class="schedule-color">
+                        <label for="scheduleColor">색상</label>
+
+                        <input type="color" id="scheduleColor" value="#4a90e2">
+                    </div>
+
+
+                    <!-- 연결할 Todo -->
+                    <div class="schedule-editor-todo-slot"></div>
+
+
+                    <!-- 설명 -->
+                    <div class="schedule-description">
+                        <label for="scheduleDescription">설명</label>
+
+                        <textarea id="scheduleDescription" class="schedule-description-input"
+                            placeholder="설명 (선택)"></textarea>
+                    </div>
+
+
+                    <!-- 저장 / 취소
+                             기능 유지를 위해 DOM에는 존재시키되
+                            위 UI 구조에는 표시하지 않음 -->
+                    <div class="schedule-editor-buttons">
+                        <button id="saveScheduleButton" type="button">저장</button>
+                        <button id="cancelScheduleButton" type="button">취소</button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- D-Day 화면 -->
+    <!-- ==================== -->
+
+    <div id="ddaySection" class="feature-section" style="display: none;">
+
+        <div class="dday-header">
+
+            <h2>📅 D-Day</h2>
+
+            <button id="newDdayButton">
+                + D-Day 추가
+            </button>
+
+        </div>
+
+
+        <div id="ddayList" class="dday-list"></div>
+
+
+        <!-- D-Day 작성 -->
+        <div id="ddayEditor" class="dday-editor">
+
+            <input type="text" id="ddayTitle" placeholder="D-Day 이름">
+
+
+            <label>
+                날짜
+            </label>
+
+            <input type="date" id="ddayDate">
+
+            <div class="dday-editor-buttons">
+
+                <button id="saveDdayButton">
+                    저장
+                </button>
+
+                <button id="cancelDdayButton">
+                    취소
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 프로젝트 화면 -->
+    <!-- ==================== -->
+
+    <div id="projectSection" class="feature-section" style="display: none;">
+
+        <div class="project-header">
+
+            <h2>🎯 프로젝트</h2>
+
+            <button id="newProjectButton">
+                + 프로젝트 추가
+            </button>
+
+        </div>
+
+
+        <!-- 프로젝트 목록 -->
+
+        <div id="projectList" class="project-list"></div>
+
+
+        <!-- 프로젝트 작성 -->
+
+        <div id="projectEditor" class="project-editor" style="display: none;">
+
+            <input type="text" id="projectTitle" placeholder="프로젝트 이름">
+
+
+            <div class="project-date">
+
+                <div>
+
+                    <label>시작일</label>
+
+                    <input type="date" id="projectStartDate">
+
+                </div>
+
+
+                <div>
+
+                    <label>목표일</label>
+
+                    <input type="date" id="projectEndDate">
+
+                </div>
+
+            </div>
+
+
+            <textarea id="projectItems"
+                placeholder="할 일을 한 줄에 하나씩 입력하세요&#10;예:&#10;1강 함수의 기본&#10;2강 함수의 그래프&#10;3강 합성함수"></textarea>
+
+
+            <div class="project-editor-buttons">
+
+                <button id="saveProjectButton">
+                    저장
+                </button>
+
+                <button id="cancelProjectButton">
+                    취소
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 통계 화면 -->
+    <!-- ==================== -->
+
+    <div id="statsSection" class="feature-section" style="display: none;">
+
+        <div class="stats-header">
+
+            <h2>📊 공부 통계</h2>
+
+        </div>
+
+
+        <div class="stats-summary">
+
+            <div class="stats-card">
+
+                <span>오늘 공부</span>
+
+                <strong id="todayStudyTime">
+                    0분
+                </strong>
+
+            </div>
+
+
+            <div class="stats-card">
+
+                <span>이번 주 공부</span>
+
+                <strong id="weekStudyTime">
+                    0분
+                </strong>
+
+            </div>
+
+
+            <div class="stats-card">
+
+                <div class="stats-card-header">
+                    <span>하루 목표</span>
+
+                    <button id="setStudyGoalButton">
+                        목표 설정
+                    </button>
+                </div>
+
+                <strong id="dailyStudyGoal">
+                    1시간
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="stats-category">
+
+            <div class="stats-category-header">
+
+                <h3>카테고리별 공부시간</h3>
+
+                <div class="stats-period-selector">
+
+                    <button type="button" class="stats-period-button" data-period="day">
+                        하루
+                    </button>
+
+                    <button type="button" class="stats-period-button active" data-period="week">
+                        1주
+                    </button>
+
+                    <button type="button" class="stats-period-button" data-period="month">
+                        1달
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="stats-category-content">
+
+                <div id="categoryStudyStats"></div>
+
+                <div class="statistics-panel">
+
+                    <div class="category-study-visual">
+
+                        <div id="categoryStudyDonut" class="category-study-donut"></div>
+
+                        <div id="categoryStudyRatio" class="category-study-legend"></div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================== -->
+        <!-- 최근 7일 공부시간 -->
+        <!-- ==================== -->
+
+        <div class="weekly-study">
+
+            <h3>최근 7일 공부시간</h3>
+
+            <div id="weeklyStudyChart"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 스톱워치 화면 -->
+    <!-- ==================== -->
+
+    <div id="stopwatchSection" class="feature-section" style="display: none;">
+
+        <div class="stopwatch-container">
+
+            <h2>⏱️ 공부 스톱워치</h2>
+
+            <div id="stopwatchDisplay">
+                00:00:00
+            </div>
+
+            <div class="stopwatch-category-wrap">
+
+                <span id="stopwatchCategoryColor" class="stopwatch-category-color"></span>
+
+                <select id="stopwatchCategory">
+
+                    <option value="">
+                        카테고리 선택
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="stopwatch-buttons">
+
+                <button id="stopwatchStartButton">
+                    시작
+                </button>
+
+                <button id="stopwatchResetButton">
+                    초기화
+                </button>
+
+            </div>
+
+
+            <div id="studyRecordSection">
+
+                <h3>공부 기록</h3>
+
+                <div id="studyRecordList"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ==================== -->
+    <!-- 하단 기능 메뉴 -->
+    <!-- ==================== -->
+
+    <div class="feature-menu">
+
+        <button id="todoTab" class="feature-button active">
+
+            <span class="feature-icon">🏠</span>
+
+            <span class="feature-name">
+                Todo
+            </span>
+
+        </button>
+
+
+        <button id="memoTab" class="feature-button">
+
+            <span class="feature-icon">📝</span>
+
+            <span class="feature-name">
+                메모
+            </span>
+
+        </button>
+
+
+        <button id="scheduleTab" class="feature-button">
+
+            <span class="feature-icon">⏰</span>
+
+            <span class="feature-name">
+                일정
+            </span>
+
+        </button>
+
+
+        <button id="ddayTab" class="feature-button">
+
+            <span class="feature-icon">📅</span>
+
+            <span class="feature-name">
+                D-Day
+            </span>
+
+        </button>
+
+
+        <button id="projectTab" class="feature-button">
+
+            <span class="feature-icon">🎯</span>
+
+            <span class="feature-name">
+                프로젝트
+            </span>
+
+        </button>
+
+
+        <button id="stopwatchTab" class="feature-button">
+
+            <span class="feature-icon">⏱️</span>
+
+            <span class="feature-name">
+                스톱워치
+            </span>
+
+        </button>
+
+
+        <button id="statsTab" class="feature-button">
+
+            <span class="feature-icon">📊</span>
+
+            <span class="feature-name">
+                통계
+            </span>
+
+        </button>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
