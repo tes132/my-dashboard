@@ -7658,22 +7658,17 @@ function enableTouchReorder(listElement, cardSelector, saveOrder) {
 // 모바일 / iPad 터치 정렬
 // ============================================================
 
-function enableTouchReorder(
-    listElement,
-    cardSelector,
-    saveOrder
-) {
+function enableTouchReorder(listElement, cardSelector, saveOrder) {
+
     if (!listElement) {
         return;
     }
 
-    let draggingCard = null;
-    let startY = 0;
-    let startX = 0;
-    let isDragging = false;
+    let touchCard = null;
+    let touchPreview = null;
 
     listElement.addEventListener(
-        "pointerdown",
+        "touchstart",
         function (event) {
 
             const handle =
@@ -7685,186 +7680,210 @@ function enableTouchReorder(
                 return;
             }
 
-            // 터치 / 펜에서만 처리
-            if (
-                event.pointerType !== "touch" &&
-                event.pointerType !== "pen"
-            ) {
-                return;
-            }
-
-            const card =
+            touchCard =
                 handle.closest(cardSelector);
 
-            if (!card) {
+            if (!touchCard) {
                 return;
             }
 
-            draggingCard = card;
+            const touch =
+                event.touches[0];
 
-            startX = event.clientX;
-            startY = event.clientY;
+            /* =========================
+               모바일 드래그 미리보기 생성
+            ========================= */
 
-            isDragging = false;
+            touchPreview =
+                touchCard.cloneNode(true);
 
-            handle.setPointerCapture(
-                event.pointerId
+            touchPreview.classList.remove(
+                "touch-dragging"
             );
 
+            touchPreview.classList.add(
+                "touch-drag-preview"
+            );
+
+            const rect =
+                touchCard.getBoundingClientRect();
+
+            touchPreview.style.width =
+                rect.width + "px";
+
+            touchPreview.style.height =
+                rect.height + "px";
+
+            touchPreview.style.left =
+                (touch.clientX - rect.width / 2) + "px";
+
+            touchPreview.style.top =
+                (touch.clientY - 20) + "px";
+
+            document.body.appendChild(
+                touchPreview
+            );
+
+            touchCard.classList.add(
+                "touch-dragging"
+            );
+
+        },
+        {
+            passive: true
         }
     );
 
 
     listElement.addEventListener(
-        "pointermove",
+        "touchmove",
         function (event) {
 
-            if (!draggingCard) {
+            if (!touchCard) {
                 return;
             }
-
-            const moveX =
-                Math.abs(
-                    event.clientX - startX
-                );
-
-            const moveY =
-                Math.abs(
-                    event.clientY - startY
-                );
-
-
-            // 조금 움직인 것은 단순 터치로 처리
-            if (
-                !isDragging &&
-                Math.max(moveX, moveY) < 8
-            ) {
-                return;
-            }
-
-
-            if (!isDragging) {
-
-                isDragging = true;
-
-                draggingCard.classList.add(
-                    "touch-dragging"
-                );
-
-            }
-
 
             event.preventDefault();
 
+            const touch =
+                event.touches[0];
+
+
+            /* =========================
+               미리보기 위치 이동
+            ========================= */
+
+            if (touchPreview) {
+
+                const rect =
+                    touchCard.getBoundingClientRect();
+
+                touchPreview.style.left =
+                    (touch.clientX - rect.width / 2) + "px";
+
+                touchPreview.style.top =
+                    (touch.clientY - 20) + "px";
+            }
+
+
+            /* =========================
+               실제 삽입 위치 계산
+            ========================= */
 
             const target =
                 document.elementFromPoint(
-                    event.clientX,
-                    event.clientY
+                    touch.clientX,
+                    touch.clientY
                 );
 
             if (!target) {
                 return;
             }
 
-
             const targetCard =
-                target.closest(
-                    cardSelector
-                );
-
+                target.closest(cardSelector);
 
             if (
                 !targetCard ||
-                targetCard === draggingCard ||
-                !listElement.contains(
-                    targetCard
-                )
+                targetCard === touchCard ||
+                !listElement.contains(targetCard)
             ) {
                 return;
             }
 
-
             const rect =
                 targetCard.getBoundingClientRect();
 
-
-            const middleX =
-                rect.left +
-                rect.width / 2;
+            const middleY =
+                rect.top +
+                rect.height / 2;
 
 
             if (
-                event.clientX <
-                middleX
+                touch.clientY <
+                middleY
             ) {
 
                 listElement.insertBefore(
-                    draggingCard,
+                    touchCard,
                     targetCard
                 );
 
-            }
-
-            else {
+            } else {
 
                 listElement.insertBefore(
-                    draggingCard,
+                    touchCard,
                     targetCard.nextSibling
                 );
 
             }
 
+        },
+        {
+            passive: false
         }
     );
 
 
     listElement.addEventListener(
-        "pointerup",
+        "touchend",
         function () {
 
-            if (!draggingCard) {
+            if (!touchCard) {
                 return;
             }
 
-
-            if (isDragging) {
-
-                draggingCard.classList.remove(
-                    "touch-dragging"
-                );
-
-                saveOrder();
-
-            }
-
-
-            draggingCard = null;
-            isDragging = false;
-
-        }
-    );
-
-
-    listElement.addEventListener(
-        "pointercancel",
-        function () {
-
-            if (!draggingCard) {
-                return;
-            }
-
-
-            draggingCard.classList.remove(
+            touchCard.classList.remove(
                 "touch-dragging"
             );
 
 
-            draggingCard = null;
-            isDragging = false;
+            if (touchPreview) {
+
+                touchPreview.remove();
+
+                touchPreview =
+                    null;
+            }
+
+
+            saveOrder();
+
+            touchCard =
+                null;
 
         }
     );
+
+
+    listElement.addEventListener(
+        "touchcancel",
+        function () {
+
+            if (!touchCard) {
+                return;
+            }
+
+            touchCard.classList.remove(
+                "touch-dragging"
+            );
+
+
+            if (touchPreview) {
+
+                touchPreview.remove();
+
+                touchPreview =
+                    null;
+            }
+
+
+            touchCard =
+                null;
+
+        }
+    );
+
 }
 
 enableTouchReorder(

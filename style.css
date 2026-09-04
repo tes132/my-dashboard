@@ -2277,7 +2277,7 @@ button:hover {
 
 
 
-/*드래그핸들*/
+/*드래그 관련*/
 .memo-drag-handle,
 .dday-drag-handle,
 .project-drag-handle {
@@ -2287,4 +2287,13 @@ button:hover {
 .dday-card.touch-dragging,
 .project-item.touch-dragging {
     opacity: 0.5;
+}
+
+/* 모바일 터치 드래그 미리보기 */
+.touch-drag-preview {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.85;
+    transform: rotate(2deg) scale(1.02);
 }
