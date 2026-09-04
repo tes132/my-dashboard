@@ -638,11 +638,9 @@ async function runUserSyncWithTimeout(user, timeoutMs) {
 }
 
 async function activateSignedInUser(user) {
-    if (!user) {
-        return;
-    }
+    if (!user) return;
 
-    // 이미 같은 계정의 동기화가 끝났다면 중복 처리하지 않는다.
+    // 이미 같은 계정이 활성화된 경우에는 화면만 보장한다.
     if (
         currentFirebaseUser &&
         currentFirebaseUser.uid === user.uid &&
@@ -653,13 +651,10 @@ async function activateSignedInUser(user) {
         return;
     }
 
-    // 동일한 UID에 대한 인증 이벤트가 중복으로 들어오는 경우
-    // 동일한 동기화를 두 번 실행하지 않는다.
-    if (
-        activeSyncPromise &&
-        activeSyncUid === user.uid
-    ) {
-        await activeSyncPromise;
+    // 같은 인증 이벤트가 두 번 들어와도 동기화를 중복 실행하지 않는다.
+    if (activeSyncPromise && activeSyncUid === user.uid) {
+        // 모바일에서는 이미 화면을 열어 둔 뒤 백그라운드에서 동기화한다.
+        unlockDashboard();
         return;
     }
 
@@ -677,23 +672,21 @@ async function activateSignedInUser(user) {
             "Google 사용자";
     }
 
-    // 이 시점에는 아직 dashboard를 열지 않는다.
-    // 먼저 PC에 있는 클라우드 데이터를 가져와서
-    // 모바일 로컬 데이터가 클라우드를 덮어쓰는 것을 막는다.
+    // ========================================================
+    // 중요: 로그인과 Firestore를 분리한다.
+    // 인증이 성공하면 먼저 대시보드에 입장시킨다.
+    // Firestore가 느리거나 막혀 있어도 무한로딩하지 않는다.
+    // ========================================================
+    unlockDashboard();
     setAuthMessage(
         isMobileBrowser
-            ? "Google 로그인 완료. 클라우드 데이터를 확인하는 중..."
-            : "클라우드 데이터를 확인하는 중..."
+            ? "로그인 완료 · 클라우드 데이터를 확인하는 중..."
+            : "로그인 완료 · 클라우드 데이터를 확인하는 중..."
     );
 
     const syncPromise = (async function () {
         try {
-            // 모바일은 어떤 이유로 Firestore가 응답하지 않아도
-            // 8초 이상 로그인 화면에 갇히지 않도록 강제 제한한다.
-            const result = await runUserSyncWithTimeout(
-                user,
-                8000
-            );
+            const result = await runUserSyncWithTimeout(user, 8000);
 
             if (
                 operationId !== authOperationId ||
@@ -703,43 +696,30 @@ async function activateSignedInUser(user) {
                 return;
             }
 
-            // 클라우드 데이터를 로컬에 반영한 뒤 normalize/render.
-            // 이때는 cloudHydrating=true라서 render 중 발생하는 저장은
-            // Firestore로 전송되지 않는다.
+            // 클라우드 데이터를 적용한 뒤 화면 갱신.
+            // cloudHydrating=true 동안은 일반 저장이 Firestore로 가지 않는다.
             try {
                 refreshDashboardAfterCloudLoad();
-            } catch (error) {
-                console.error(
-                    "데이터 화면 갱신 실패:",
-                    error
-                );
+            } catch (renderError) {
+                console.error("클라우드 데이터 화면 갱신 실패:", renderError);
             }
 
             cloudHydrating = false;
-            cloudSyncReady = true;
-
-            unlockDashboard();
+            cloudSyncReady = result.status !== "read-failed" || result.hasCloudData;
 
             if (result.status === "read-failed") {
                 setAuthMessage(
-                    isMobileBrowser
-                        ? "로그인은 완료됐지만 클라우드 데이터 연결에 실패했습니다. 현재 기기 데이터로 입장합니다."
-                        : "로그인은 완료됐지만 클라우드 데이터를 확인하지 못했습니다. 현재 기기 데이터를 유지합니다."
+                    "로그인은 완료됐습니다. 클라우드 데이터를 불러오지 못해 현재 기기 데이터를 사용합니다."
                 );
             } else if (result.status === "cloud-partial") {
                 setAuthMessage(
-                    isMobileBrowser
-                        ? "로그인은 완료됐습니다. 일부 클라우드 데이터를 불러오지 못했습니다."
-                        : "로그인은 완료됐습니다. 일부 클라우드 데이터를 확인하지 못했습니다."
+                    "로그인은 완료됐습니다. 일부 클라우드 데이터만 불러왔습니다."
                 );
             } else {
                 setAuthMessage("");
             }
         } catch (error) {
-            console.error(
-                "Firebase 데이터 동기화 실패:",
-                error
-            );
+            console.error("Firebase 백그라운드 동기화 실패:", error);
 
             if (
                 operationId !== authOperationId ||
@@ -753,34 +733,29 @@ async function activateSignedInUser(user) {
             cloudSyncReady = false;
 
             try {
-                // 클라우드 오류가 나더라도 앱 자체는 들어갈 수 있게 한다.
+                // 클라우드 실패 시에도 이미 열린 대시보드는 유지한다.
                 refreshDashboardAfterCloudLoad();
             } catch (renderError) {
-                console.error(
-                    "로컬 데이터 화면 갱신 실패:",
-                    renderError
-                );
+                console.error("로컬 데이터 화면 갱신 실패:", renderError);
             }
 
             unlockDashboard();
             setAuthMessage(
-                isMobileBrowser
-                    ? "로그인은 완료됐습니다. 클라우드 응답이 늦어 현재 기기 데이터로 입장합니다."
-                    : "로그인은 완료됐지만 클라우드 동기화에 실패했습니다. 현재 기기의 데이터를 사용합니다."
+                "로그인은 완료됐습니다. 클라우드 연결에 실패해 현재 기기 데이터를 사용합니다."
             );
         }
     })();
 
     activeSyncPromise = syncPromise;
 
-    try {
-        await syncPromise;
-    } finally {
+    // 절대 여기서 await하지 않는다.
+    // 로그인 성공 후 모바일 화면이 Firestore 응답을 기다리며 멈추는 것을 방지한다.
+    syncPromise.finally(function () {
         if (activeSyncUid === user.uid) {
             activeSyncPromise = null;
             activeSyncUid = null;
         }
-    }
+    });
 }
 
 // 인증 상태 리스너는 페이지 시작 즉시 등록한다.
