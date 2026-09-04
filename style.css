@@ -2078,54 +2078,6 @@ button:hover {
     }
 }
 
-
-/* ============================================================
-   스톱워치 화면
-   ============================================================ */
-
-#stopwatchSection .stopwatch-container {
-    width: 100%;
-    text-align: center;
-}
-
-#stopwatchSection #stopwatchDisplay {
-    width: 100%;
-    min-height: 120px;
-    margin: 10px auto 28px auto;
-    box-sizing: border-box;
-    font-size: 64px;
-    font-weight: bold;
-    line-height: 1;
-    letter-spacing: 2px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#stopwatchSection .stopwatch-category-wrap {
-    width: min(650px, 100%);
-    margin: 0 auto 24px auto;
-    text-align: left;
-}
-
-#stopwatchSection .stopwatch-buttons {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin: 0 auto 35px auto;
-}
-
-#stopwatchSection .stopwatch-buttons button {
-    min-width: 90px;
-}
-
-#stopwatchSection #studyRecordSection {
-    text-align: left;
-}
-
-
 /* ============================================================
    통계 상단 요약 카드
    ============================================================ */
