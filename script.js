@@ -1,5 +1,345 @@
-// My Dashboard - refactored script.js//
+// ============================================================
+// Firebase
+// ============================================================
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    getRedirectResult,
+    onAuthStateChanged,
+    signInWithRedirect,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBF-wTk14lNmZlOKuwrwjZLN3vpVZPyAyM",
+    authDomain: "my-dashboard-2b50f.firebaseapp.com",
+    projectId: "my-dashboard-2b50f",
+    storageBucket: "my-dashboard-2b50f.firebasestorage.app",
+    messagingSenderId: "966095927988",
+    appId: "1:966095927988:web:14f81692ddb4255f1835e1"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const googleProvider = new GoogleAuthProvider();
+
+let currentFirebaseUser = null;
+let cloudSyncReady = false;
+
+const CLOUD_KEYS = [
+    "categories",
+    "projects",
+    "memos",
+    "schedules",
+    "dDays",
+    "studyRecords",
+    "dailyStudyGoal"
+];
+
+const authScreen = document.getElementById("authScreen");
+const googleLoginButton = document.getElementById("googleLoginButton");
+const authMessage = document.getElementById("authMessage");
+const accountUserName = document.getElementById("accountUserName");
+const logoutButton = document.getElementById("logoutButton");
+
+function setAuthMessage(message) {
+    if (authMessage) {
+        authMessage.textContent = message || "";
+    }
+}
+
+async function saveCloudData(key, data) {
+    if (!currentFirebaseUser || !cloudSyncReady) {
+        return;
+    }
+
+    try {
+        await setDoc(
+            doc(
+                db,
+                "users",
+                currentFirebaseUser.uid,
+                "data",
+                key
+            ),
+            {
+                value: data,
+                updatedAt: serverTimestamp()
+            }
+        );
+    } catch (error) {
+        console.error(
+            `Firebase 저장 실패 (${key})`,
+            error
+        );
+    }
+}
+
+async function getCloudData(key) {
+    if (!currentFirebaseUser) {
+        return {
+            exists: false,
+            value: null
+        };
+    }
+
+    const snapshot = await getDoc(
+        doc(
+            db,
+            "users",
+            currentFirebaseUser.uid,
+            "data",
+            key
+        )
+    );
+
+    if (!snapshot.exists()) {
+        return {
+            exists: false,
+            value: null
+        };
+    }
+
+    return {
+        exists: true,
+        value: snapshot.data().value
+    };
+}
+
+function getLocalDataForCloud(key) {
+    if (key === "dailyStudyGoal") {
+        return (
+            Number(
+                localStorage.getItem(
+                    "dailyStudyGoal"
+                )
+            ) || 3600
+        );
+    }
+
+    return loadFromStorage(key, []);
+}
+
+function setLocalDataFromCloud(key, value) {
+    if (key === "dailyStudyGoal") {
+        localStorage.setItem(
+            "dailyStudyGoal",
+            String(
+                Number(value) || 3600
+            )
+        );
+        return;
+    }
+
+    localStorage.setItem(
+        key,
+        JSON.stringify(value)
+    );
+}
+
+async function uploadAllLocalData() {
+    for (const key of CLOUD_KEYS) {
+        await saveCloudData(
+            key,
+            getLocalDataForCloud(key)
+        );
+    }
+}
+
+async function loadCloudDataOrMigrate() {
+    let hasAnyCloudData = false;
+    const cloudValues = {};
+
+    for (const key of CLOUD_KEYS) {
+        const result = await getCloudData(key);
+
+        if (result.exists) {
+            hasAnyCloudData = true;
+            cloudValues[key] = result.value;
+        }
+    }
+
+    if (hasAnyCloudData) {
+        for (const key of CLOUD_KEYS) {
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    cloudValues,
+                    key
+                )
+            ) {
+                setLocalDataFromCloud(
+                    key,
+                    cloudValues[key]
+                );
+            }
+        }
+    } else {
+        // 첫 로그인 기기라면 기존 LocalStorage 데이터를
+        // 클라우드로 한 번 올린다.
+        await uploadAllLocalData();
+    }
+}
+
+function refreshDashboardAfterCloudLoad() {
+    categories = loadFromStorage("categories", []);
+    projects = loadFromStorage("projects", []);
+    memos = loadFromStorage("memos", []);
+    schedules = loadFromStorage("schedules", []);
+    dDays = loadFromStorage("dDays", []);
+    studyRecords = loadFromStorage("studyRecords", []);
+    dailyStudyGoal =
+        Number(
+            localStorage.getItem("dailyStudyGoal")
+        ) || 3600;
+
+    normalizeData();
+
+    renderCalendar();
+    showTodos();
+    showMemos();
+    showSchedules();
+    showDDays();
+    showProjects();
+
+    loadStopwatchCategories();
+    updateStopwatchDisplay();
+    showStudyRecords();
+
+    showStudyStats();
+    showWeeklyStudyChart();
+    showDailyStudyGoal();
+}
+
+async function handleGoogleLogin() {
+    if (!googleLoginButton) return;
+
+    googleLoginButton.disabled = true;
+    setAuthMessage("Google 로그인 페이지로 이동합니다...");
+
+    try {
+        await signInWithRedirect(
+            auth,
+            googleProvider
+        );
+    } catch (error) {
+        console.error(error);
+        googleLoginButton.disabled = false;
+        setAuthMessage(
+            "로그인에 실패했습니다. 다시 시도해주세요."
+        );
+    }
+}
+
+async function handleLogout() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error(error);
+        alert("로그아웃 중 오류가 발생했습니다.");
+    }
+}
+
+if (googleLoginButton) {
+    googleLoginButton.addEventListener(
+        "click",
+        handleGoogleLogin
+    );
+}
+
+if (logoutButton) {
+    logoutButton.addEventListener(
+        "click",
+        handleLogout
+    );
+}
+
+// Redirect 방식의 Google 로그인 결과 처리.
+// 로그인하지 않은 일반 첫 접속에서는 null이 정상이다.
+getRedirectResult(auth).catch(function (error) {
+    console.error(
+        "Google 로그인 결과 처리 실패",
+        error
+    );
+    setAuthMessage(
+        "Google 로그인 처리 중 문제가 발생했습니다."
+    );
+});
+
+onAuthStateChanged(
+    auth,
+    async function (user) {
+        if (!user) {
+            currentFirebaseUser = null;
+            cloudSyncReady = false;
+
+            document.body.classList.add(
+                "auth-locked"
+            );
+
+            if (accountUserName) {
+                accountUserName.textContent = "";
+            }
+
+            if (googleLoginButton) {
+                googleLoginButton.disabled = false;
+            }
+
+            return;
+        }
+
+        currentFirebaseUser = user;
+
+        document.body.classList.remove(
+            "auth-locked"
+        );
+
+        if (accountUserName) {
+            accountUserName.textContent =
+                user.displayName ||
+                user.email ||
+                "Google 사용자";
+        }
+
+        setAuthMessage(
+            "데이터를 불러오는 중..."
+        );
+
+        try {
+            await loadCloudDataOrMigrate();
+
+            cloudSyncReady = true;
+
+            refreshDashboardAfterCloudLoad();
+
+            setAuthMessage("");
+        } catch (error) {
+            console.error(
+                "Firebase 데이터 불러오기 실패",
+                error
+            );
+
+            cloudSyncReady = false;
+
+            alert(
+                "클라우드 데이터를 불러오지 못했습니다.\n" +
+                "Firebase Firestore 설정과 보안 규칙을 확인해주세요."
+            );
+        }
+    }
+);
+
+
+// ============================================================
 
 // ============================================================
 // 1. 공통 유틸리티
@@ -92,6 +432,10 @@ function saveToStorage(key, data) {
         key,
         JSON.stringify(data)
     );
+
+    // 기존 LocalStorage 저장은 그대로 유지하면서
+    // 로그인 상태에서는 Firebase에도 같은 데이터를 저장한다.
+    saveCloudData(key, data);
 }
 
 
@@ -7159,6 +7503,11 @@ if (setStudyGoalButton) {
                 )
             );
 
+            saveCloudData(
+                "dailyStudyGoal",
+                dailyStudyGoal
+            );
+
 
             showDailyStudyGoal();
 
@@ -7849,5 +8198,3 @@ setInterval(
 // ============================================================
 // END
 // ============================================================
-
-

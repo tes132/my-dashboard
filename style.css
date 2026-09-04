@@ -2309,3 +2309,151 @@ button:hover {
     background: #f7f7f7;
     flex: 0 0 auto;
 }
+
+
+/* ============================================================
+   Firebase 로그인
+   ============================================================ */
+
+body.auth-locked > *:not(#authScreen) {
+    display: none !important;
+}
+
+#authScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+    background: #f5f7fb;
+}
+
+body:not(.auth-locked) #authScreen {
+    display: none;
+}
+
+.auth-card {
+    width: min(420px, 100%);
+    box-sizing: border-box;
+    padding: 36px 30px;
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.10);
+    text-align: center;
+}
+
+.auth-logo {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.auth-card h2 {
+    margin: 0 0 12px 0;
+    font-size: 28px;
+}
+
+.auth-card p {
+    margin: 0 0 24px 0;
+    color: #666;
+    line-height: 1.6;
+}
+
+.google-login-button {
+    width: 100%;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid #dadce0;
+    border-radius: 10px;
+    background: white;
+    color: #202124;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.google-login-button:hover {
+    background: #f8f9fa;
+}
+
+.google-login-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.google-login-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.auth-message {
+    min-height: 22px;
+    margin-top: 16px !important;
+    margin-bottom: 0 !important;
+    font-size: 13px;
+}
+
+#accountBar {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 9998;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    font-size: 13px;
+}
+
+body:not(.auth-locked) #accountBar {
+    display: flex;
+}
+
+#accountUserName {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#logoutButton {
+    border: none;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #eee;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#logoutButton:hover {
+    background: #e2e2e2;
+}
+
+@media (max-width: 550px) {
+    .auth-card {
+        padding: 30px 22px;
+    }
+
+    #accountBar {
+        top: 8px;
+        right: 8px;
+    }
+
+    #accountUserName {
+        max-width: 140px;
+    }
+}

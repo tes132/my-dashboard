@@ -8,7 +8,32 @@
     <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="auth-locked">
+
+    <!-- ==================== -->
+    <!-- Firebase 로그인 -->
+    <!-- ==================== -->
+
+    <div id="authScreen">
+        <div class="auth-card">
+            <div class="auth-logo">📊</div>
+            <h2>My Dashboard</h2>
+            <p>여러 기기에서 같은 Dashboard를 사용하려면<br>Google 계정으로 로그인하세요.</p>
+
+            <button id="googleLoginButton" class="google-login-button">
+                <span class="google-login-icon">G</span>
+                Google로 로그인
+            </button>
+
+            <p id="authMessage" class="auth-message"></p>
+        </div>
+    </div>
+
+    <div id="accountBar">
+        <span id="accountUserName"></span>
+        <button id="logoutButton">로그아웃</button>
+    </div>
+
 
     <h1>My Dashboard</h1>
 
@@ -692,8 +717,4 @@
     </div>
 
 
-    <script src="script.js"></script>
-
-</body>
-
-</html>
+    <script type="module" src="script.js"></script>
