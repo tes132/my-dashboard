@@ -1,5 +1,5 @@
 // ============================================================
-// Firebase
+// Firebase / Google 로그인
 // ============================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
@@ -8,6 +8,8 @@ import {
     GoogleAuthProvider,
     getRedirectResult,
     onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence,
     signInWithPopup,
     signInWithRedirect,
     signOut
@@ -34,8 +36,21 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
+// Firebase가 브라우저에 저장한 로그인 세션을 명시적으로 사용한다.
+// 페이지를 새로고침해도 로그인 상태는 유지된다.
+const authPersistenceReady = setPersistence(
+    auth,
+    browserLocalPersistence
+).catch(function (error) {
+    console.error("Firebase 로그인 지속성 설정 실패:", error);
+    throw error;
+});
+
 let currentFirebaseUser = null;
 let cloudSyncReady = false;
+let authCheckFinished = false;
+let authHandling = false;
+let authOperationId = 0;
 
 const CLOUD_KEYS = [
     "categories",
@@ -59,17 +74,41 @@ function setAuthMessage(message) {
     }
 }
 
+function lockDashboard() {
+    document.body.classList.add("auth-locked");
+}
+
+function unlockDashboard() {
+    document.body.classList.remove("auth-locked");
+}
+
+// 인증 상태가 결정되기 전에는 무조건 잠근다.
+// 이 코드가 아래 초기화 코드보다 먼저 실행되므로
+// onAuthStateChanged가 늦게 호출되어도 잠깐이라도 로그인 화면이 튀지 않는다.
+lockDashboard();
+
+function isMobileBrowser() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera || "";
+
+    return (
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches && window.innerWidth <= 1024)
+    );
+}
+
 async function saveCloudData(key, data) {
     if (!currentFirebaseUser) {
         return;
     }
+
+    const userAtStart = currentFirebaseUser;
 
     try {
         await setDoc(
             doc(
                 db,
                 "users",
-                currentFirebaseUser.uid,
+                userAtStart.uid,
                 "data",
                 key
             ),
@@ -79,22 +118,25 @@ async function saveCloudData(key, data) {
             }
         );
     } catch (error) {
-        console.error(
-            `Firebase 저장 실패 (${key})`,
-            error
-        );
+        // 로그아웃 직후 시작된 저장 요청은 화면을 멈추게 하지 않는다.
+        console.error(`Firebase 저장 실패 (${key})`, error);
     }
 }
 
 function withTimeout(promise, ms, label) {
-    return Promise.race([
-        promise,
-        new Promise(function (_, reject) {
-            setTimeout(function () {
-                reject(new Error(label + " 시간 초과"));
-            }, ms);
-        })
-    ]);
+    let timeoutId = null;
+
+    const timeoutPromise = new Promise(function (_, reject) {
+        timeoutId = setTimeout(function () {
+            reject(new Error(label + " 시간 초과"));
+        }, ms);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(function () {
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+        }
+    });
 }
 
 async function getCloudData(key) {
@@ -105,12 +147,14 @@ async function getCloudData(key) {
         };
     }
 
+    const userAtStart = currentFirebaseUser;
+
     const snapshot = await withTimeout(
         getDoc(
             doc(
                 db,
                 "users",
-                currentFirebaseUser.uid,
+                userAtStart.uid,
                 "data",
                 key
             )
@@ -136,9 +180,7 @@ function getLocalDataForCloud(key) {
     if (key === "dailyStudyGoal") {
         return (
             Number(
-                localStorage.getItem(
-                    "dailyStudyGoal"
-                )
+                localStorage.getItem("dailyStudyGoal")
             ) || 3600
         );
     }
@@ -150,9 +192,7 @@ function setLocalDataFromCloud(key, value) {
     if (key === "dailyStudyGoal") {
         localStorage.setItem(
             "dailyStudyGoal",
-            String(
-                Number(value) || 3600
-            )
+            String(Number(value) || 3600)
         );
         return;
     }
@@ -165,6 +205,10 @@ function setLocalDataFromCloud(key, value) {
 
 async function uploadAllLocalData() {
     for (const key of CLOUD_KEYS) {
+        if (!currentFirebaseUser) {
+            return;
+        }
+
         await saveCloudData(
             key,
             getLocalDataForCloud(key)
@@ -211,6 +255,8 @@ async function loadCloudDataOrMigrate() {
             }
         }
     } else {
+        // 첫 로그인인 경우 현재 기기의 기존 데이터를 클라우드로 올린다.
+        // 초기 로그인 성공 자체는 이 업로드 완료 여부에 묶지 않는다.
         uploadAllLocalData().catch(function (error) {
             console.error(
                 "첫 Firebase 데이터 업로드 실패:",
@@ -250,24 +296,73 @@ function refreshDashboardAfterCloudLoad() {
     showDailyStudyGoal();
 }
 
+function describeAuthError(error) {
+    if (!error) {
+        return "알 수 없는 로그인 오류가 발생했습니다.";
+    }
+
+    switch (error.code) {
+        case "auth/popup-closed-by-user":
+            return "Google 로그인 창이 닫혔습니다.";
+
+        case "auth/popup-blocked":
+        case "auth/popup-operation-not-supported":
+            return "이 브라우저에서는 팝업 로그인을 사용할 수 없습니다.";
+
+        case "auth/unauthorized-domain":
+            return "현재 GitHub Pages 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다.";
+
+        case "auth/operation-not-allowed":
+            return "Firebase에서 Google 로그인이 활성화되어 있지 않습니다.";
+
+        case "auth/network-request-failed":
+            return "네트워크 연결을 확인해주세요.";
+
+        case "auth/cancelled-popup-request":
+            return "이미 진행 중인 Google 로그인 요청이 있습니다.";
+
+        case "auth/web-storage-unsupported":
+            return "브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다. 브라우저 설정을 확인해주세요.";
+
+        default:
+            return error.message
+                ? "Google 로그인 오류: " + error.message
+                : "Google 로그인 중 오류가 발생했습니다.";
+    }
+}
+
 async function handleGoogleLogin() {
-    const button =
-        document.getElementById("googleLoginButton");
+    const button = document.getElementById("googleLoginButton");
 
     if (!button) {
-        console.error(
-            "Google 로그인 버튼을 찾지 못했습니다."
-        );
+        console.error("Google 로그인 버튼을 찾지 못했습니다.");
         return;
     }
 
+    if (authHandling) {
+        return;
+    }
+
+    authHandling = true;
     button.disabled = true;
-    setAuthMessage("Google 로그인 중...");
+    setAuthMessage("Google 로그인 준비 중...");
 
     try {
+        await authPersistenceReady;
+
         googleProvider.setCustomParameters({
             prompt: "select_account"
         });
+
+        // 모바일 브라우저는 팝업보다 redirect가 안정적이다.
+        // 데스크톱은 popup을 우선 사용하고, 차단된 경우 redirect로 전환한다.
+        if (isMobileBrowser()) {
+            setAuthMessage("Google 로그인 페이지로 이동합니다...");
+            await signInWithRedirect(auth, googleProvider);
+            return;
+        }
+
+        setAuthMessage("Google 로그인 창을 여는 중...");
 
         const result = await signInWithPopup(
             auth,
@@ -281,197 +376,253 @@ async function handleGoogleLogin() {
             );
         }
     } catch (error) {
-        console.error(
-            "Google popup 로그인 오류:",
-            error
-        );
+        console.error("Google 로그인 오류:", error);
 
         if (
             error &&
             (
                 error.code === "auth/popup-blocked" ||
-                error.code ===
-                    "auth/popup-operation-not-supported"
+                error.code === "auth/popup-operation-not-supported"
             )
         ) {
             try {
-                setAuthMessage(
-                    "Google 로그인 페이지로 이동합니다..."
-                );
-
-                await signInWithRedirect(
-                    auth,
-                    googleProvider
-                );
-
+                setAuthMessage("Google 로그인 페이지로 이동합니다...");
+                await signInWithRedirect(auth, googleProvider);
                 return;
             } catch (redirectError) {
-                console.error(
-                    "Google redirect 로그인 오류:",
-                    redirectError
-                );
-                error = redirectError;
+                console.error("Google redirect 로그인 오류:", redirectError);
+                setAuthMessage(describeAuthError(redirectError));
             }
+        } else {
+            setAuthMessage(describeAuthError(error));
         }
+    } finally {
+        // redirect가 실제로 성공하면 페이지가 이동하므로 여기의 복구는
+        // 사실상 popup 실패/취소 상황에서만 사용된다.
+        authHandling = false;
 
-        button.disabled = false;
-
-        if (
-            error &&
-            error.code === "auth/popup-closed-by-user"
-        ) {
-            setAuthMessage(
-                "Google 로그인 창이 닫혔습니다."
-            );
-        } else if (
-            error &&
-            error.code === "auth/unauthorized-domain"
-        ) {
-            setAuthMessage(
-                "현재 GitHub Pages 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다."
-            );
-        } else if (
-            error &&
-            error.code === "auth/operation-not-allowed"
-        ) {
-            setAuthMessage(
-                "Firebase에서 Google 로그인이 활성화되어 있지 않습니다."
-            );
-        } else if (error && error.message) {
-            setAuthMessage(
-                "Google 로그인 오류: " +
-                error.message
-            );
+        if (button) {
+            button.disabled = false;
         }
     }
 }
 
 async function handleLogout() {
+    if (authHandling) {
+        return;
+    }
+
+    authHandling = true;
+    cloudSyncReady = false;
+
+    if (logoutButton) {
+        logoutButton.disabled = true;
+    }
+
+    setAuthMessage("로그아웃 중...");
+    lockDashboard();
+
     try {
         await signOut(auth);
+        currentFirebaseUser = null;
+        authOperationId += 1;
+        setAuthMessage("");
     } catch (error) {
-        console.error(
-            "로그아웃 오류:",
-            error
-        );
+        console.error("로그아웃 오류:", error);
+
+        // 로그아웃 실패 시 현재 로그인 상태는 유지될 수 있으므로
+        // 사용자 화면도 바로 복구한다.
+        if (currentFirebaseUser) {
+            unlockDashboard();
+        }
+
+        setAuthMessage("로그아웃에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+        authHandling = false;
+
+        if (logoutButton) {
+            logoutButton.disabled = false;
+        }
+    }
+}
+
+async function handleSignedInUser(user) {
+    const operationId = ++authOperationId;
+
+    currentFirebaseUser = user;
+    cloudSyncReady = false;
+
+    if (accountUserName) {
+        accountUserName.textContent =
+            user.displayName ||
+            user.email ||
+            "Google 사용자";
+    }
+
+    if (googleLoginButton) {
+        googleLoginButton.disabled = false;
+    }
+
+    // 인증 자체가 성공했으므로 여기서 앱을 열 수 있다.
+    // 이후 Firestore 동기화가 실패해도 앱은 계속 사용할 수 있다.
+    unlockDashboard();
+    setAuthMessage("클라우드 데이터를 확인하는 중...");
+
+    // 현재 기기 데이터부터 즉시 표시한다.
+    // Firestore가 느리거나 막혀도 앱이 빈 화면처럼 보이지 않게 한다.
+    try {
+        refreshDashboardAfterCloudLoad();
+    } catch (error) {
+        console.error("로컬 데이터 화면 갱신 실패:", error);
+    }
+
+    try {
+        await loadCloudDataOrMigrate();
+
+        // 로그인 중 로그아웃/계정 변경이 발생했다면
+        // 이전 로그인 작업의 결과를 적용하지 않는다.
+        if (
+            operationId !== authOperationId ||
+            !currentFirebaseUser ||
+            currentFirebaseUser.uid !== user.uid
+        ) {
+            return;
+        }
+
+        cloudSyncReady = true;
+
+        // 클라우드 데이터가 존재했다면 localStorage가 갱신되었으므로 다시 렌더링한다.
+        try {
+            refreshDashboardAfterCloudLoad();
+        } catch (error) {
+            console.error("클라우드 데이터 화면 갱신 실패:", error);
+        }
+
+        setAuthMessage("");
+    } catch (error) {
+        console.error("Firebase 데이터 불러오기 실패:", error);
+
+        if (
+            operationId !== authOperationId ||
+            !currentFirebaseUser ||
+            currentFirebaseUser.uid !== user.uid
+        ) {
+            return;
+        }
+
+        cloudSyncReady = false;
+
+        // Firestore 오류 때문에 로그인 화면으로 되돌리지 않는다.
+        // 앱은 현재 기기의 localStorage 데이터로 계속 동작한다.
         setAuthMessage(
-            "로그아웃에 실패했습니다. 다시 시도해주세요."
+            "클라우드 동기화에 실패했습니다. 현재 기기의 데이터로 계속 사용합니다."
         );
     }
 }
 
+async function initializeAuthentication() {
+    // 모듈 코드가 실행될 때 로그인 화면을 잠근 상태로 시작한다.
+    lockDashboard();
+    setAuthMessage("로그인 상태를 확인하는 중...");
 
-document.addEventListener(
-    "click",
-    function (event) {
-        const button =
-            event.target.closest(
-                "#googleLoginButton"
-            );
-
-        if (!button) return;
-
-        handleGoogleLogin();
+    try {
+        await authPersistenceReady;
+    } catch (error) {
+        console.error("Firebase 인증 초기화 실패:", error);
+        authCheckFinished = true;
+        lockDashboard();
+        setAuthMessage("Firebase 로그인 초기화에 실패했습니다.");
+        return;
     }
-);
 
+    // redirect로 돌아온 직후의 결과를 먼저 소비한다.
+    // getRedirectResult와 onAuthStateChanged를 따로 놀게 두지 않고,
+    // 이 결과 처리가 끝난 다음 인증 상태 관찰을 시작한다.
+    try {
+        const redirectResult = await getRedirectResult(auth);
+
+        if (redirectResult && redirectResult.user) {
+            console.log(
+                "Google redirect 로그인 성공:",
+                redirectResult.user.email
+            );
+        }
+    } catch (error) {
+        console.error("Google redirect 결과 처리 실패:", error);
+        setAuthMessage(describeAuthError(error));
+    }
+
+    onAuthStateChanged(
+        auth,
+        async function (user) {
+            authCheckFinished = true;
+
+            if (!user) {
+                authOperationId += 1;
+                currentFirebaseUser = null;
+                cloudSyncReady = false;
+                authHandling = false;
+
+                lockDashboard();
+
+                if (accountUserName) {
+                    accountUserName.textContent = "";
+                }
+
+                if (googleLoginButton) {
+                    googleLoginButton.disabled = false;
+                }
+
+                setAuthMessage("");
+                return;
+            }
+
+            await handleSignedInUser(user);
+        },
+        function (error) {
+            console.error("Firebase 인증 상태 감시 실패:", error);
+            authCheckFinished = true;
+            currentFirebaseUser = null;
+            cloudSyncReady = false;
+            lockDashboard();
+            setAuthMessage(
+                "로그인 상태를 확인하지 못했습니다. 페이지를 새로고침해주세요."
+            );
+        }
+    );
+}
+
+// 버튼에 리스너를 단 한 번만 연결한다.
+// document 전체 click 위임 방식은 HTML에 onclick이 추가되었을 때
+// 한 번의 클릭이 두 번 실행될 여지가 있으므로 사용하지 않는다.
+if (googleLoginButton) {
+    googleLoginButton.addEventListener(
+        "click",
+        function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            handleGoogleLogin();
+        }
+    );
+}
 
 if (logoutButton) {
     logoutButton.addEventListener(
         "click",
-        handleLogout
+        function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            handleLogout();
+        }
     );
 }
 
-
-getRedirectResult(auth).catch(
-    function (error) {
-        console.error(
-            "Google redirect 결과 처리 실패:",
-            error
-        );
-
-        if (error && error.message) {
-            setAuthMessage(
-                "Google 로그인 오류: " +
-                error.message
-            );
-        }
-    }
-);
-
-
-onAuthStateChanged(
-    auth,
-    async function (user) {
-        if (!user) {
-            currentFirebaseUser = null;
-            cloudSyncReady = false;
-
-            document.body.classList.add(
-                "auth-locked"
-            );
-
-            if (accountUserName) {
-                accountUserName.textContent = "";
-            }
-
-            if (googleLoginButton) {
-                googleLoginButton.disabled = false;
-            }
-
-            return;
-        }
-
-        currentFirebaseUser = user;
-
-        if (accountUserName) {
-            accountUserName.textContent =
-                user.displayName ||
-                user.email ||
-                "Google 사용자";
-        }
-
-        // Auth 성공 즉시 Dashboard를 연다.
-        document.body.classList.remove(
-            "auth-locked"
-        );
-
-        // 먼저 현재 기기의 로컬 데이터를 보여준다.
-        refreshDashboardAfterCloudLoad();
-
-        setAuthMessage(
-            "클라우드 데이터를 동기화하는 중..."
-        );
-
-        try {
-            await loadCloudDataOrMigrate();
-
-            cloudSyncReady = true;
-
-            // 클라우드 데이터가 있으면 화면 갱신.
-            refreshDashboardAfterCloudLoad();
-
-            setAuthMessage("");
-        } catch (error) {
-            console.error(
-                "Firebase 데이터 불러오기 실패:",
-                error
-            );
-
-            cloudSyncReady = false;
-
-            // Firestore 실패 때문에 앱을 잠그지 않는다.
-            setAuthMessage(
-                "클라우드 동기화에 실패했습니다. 현재 기기의 데이터로 계속 사용합니다."
-            );
-        }
-    }
-);
+// HTML이 module script로 실행되므로 여기서 인증 초기화를 시작한다.
+// 기존 코드처럼 getRedirectResult()를 별도 top-level 호출로 먼저 실행하지 않는다.
+initializeAuthentication();
 
 
 // ============================================================
-
 // ============================================================
 // 1. 공통 유틸리티
 // ============================================================
