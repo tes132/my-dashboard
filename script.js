@@ -9,6 +9,8 @@ import {
     onAuthStateChanged,
     setPersistence,
     browserLocalPersistence,
+    browserSessionPersistence,
+    inMemoryPersistence,
     signInWithPopup,
     signOut
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
@@ -34,22 +36,40 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
-// 브라우저 로그인 상태를 유지한다.
-// 중요: 모바일에서는 signInWithRedirect를 사용하지 않는다.
-// GitHub Pages + Firebase 기본 authDomain 조합에서 모바일/사파리/크롬의
-// 제3자 저장소 제한으로 redirect 인증이 불안정해질 수 있기 때문이다.
+// ------------------------------------------------------------
+// 인증 저장소
+// ------------------------------------------------------------
+// 모바일에서 localStorage가 제한된 환경이더라도
+// session -> memory 순서로 내려가며 로그인 자체는 진행되도록 한다.
 const authPersistenceReady = setPersistence(
     auth,
     browserLocalPersistence
-).catch(function (error) {
-    console.error("Firebase 로그인 지속성 설정 실패:", error);
-    return null;
+).catch(async function (error) {
+    console.warn("browserLocalPersistence 실패. session persistence로 전환합니다.", error);
+
+    try {
+        await setPersistence(auth, browserSessionPersistence);
+        return true;
+    } catch (sessionError) {
+        console.warn("browserSessionPersistence도 실패. memory persistence로 전환합니다.", sessionError);
+
+        try {
+            await setPersistence(auth, inMemoryPersistence);
+            return true;
+        } catch (memoryError) {
+            console.error("Firebase 로그인 persistence 설정 실패:", memoryError);
+            return false;
+        }
+    }
 });
 
 let currentFirebaseUser = null;
 let cloudSyncReady = false;
 let authHandling = false;
 let authOperationId = 0;
+let cloudHydrating = false;
+let activeSyncPromise = null;
+let activeSyncUid = null;
 
 const CLOUD_KEYS = [
     "categories",
@@ -81,13 +101,24 @@ function unlockDashboard() {
     document.body.classList.remove("auth-locked");
 }
 
-// Firebase가 최초 인증 상태를 알려주기 전까지는 앱을 잠근다.
+// 최초 인증 상태가 확정되기 전에는 앱을 잠근다.
 lockDashboard();
 setAuthMessage("로그인 상태를 확인하는 중...");
 
-async function saveCloudData(key, data) {
+// ------------------------------------------------------------
+// Firestore 저장
+// ------------------------------------------------------------
+// 핵심:
+// 로그인 직후 로컬 데이터를 Firestore에 먼저 쓰면
+// 모바일의 오래된 Todo가 PC의 최신 Todo를 덮어쓸 수 있다.
+// 따라서 클라우드 동기화가 완료되기 전에는 일반 저장을 금지한다.
+async function saveCloudData(key, data, force = false) {
     if (!currentFirebaseUser) {
-        return;
+        return false;
+    }
+
+    if (!force && (!cloudSyncReady || cloudHydrating)) {
+        return false;
     }
 
     const userAtStart = currentFirebaseUser;
@@ -106,8 +137,11 @@ async function saveCloudData(key, data) {
                 updatedAt: serverTimestamp()
             }
         );
+
+        return true;
     } catch (error) {
         console.error(`Firebase 저장 실패 (${key})`, error);
+        return false;
     }
 }
 
@@ -120,48 +154,66 @@ function withTimeout(promise, ms, label) {
         }, ms);
     });
 
-    return Promise.race([promise, timeoutPromise]).finally(function () {
+    return Promise.race([
+        promise,
+        timeoutPromise
+    ]).finally(function () {
         if (timeoutId !== null) {
             clearTimeout(timeoutId);
         }
     });
 }
 
-async function getCloudData(key) {
-    if (!currentFirebaseUser) {
+async function getCloudData(key, user) {
+    const targetUser = user || currentFirebaseUser;
+
+    if (!targetUser) {
         return {
+            ok: false,
             exists: false,
-            value: null
+            value: null,
+            error: new Error("로그인 사용자가 없습니다.")
         };
     }
 
-    const userAtStart = currentFirebaseUser;
+    try {
+        const snapshot = await withTimeout(
+            getDoc(
+                doc(
+                    db,
+                    "users",
+                    targetUser.uid,
+                    "data",
+                    key
+                )
+            ),
+            5000,
+            "Firestore 읽기"
+        );
 
-    const snapshot = await withTimeout(
-        getDoc(
-            doc(
-                db,
-                "users",
-                userAtStart.uid,
-                "data",
-                key
-            )
-        ),
-        5000,
-        "Firestore 읽기"
-    );
+        if (!snapshot.exists()) {
+            return {
+                ok: true,
+                exists: false,
+                value: null,
+                error: null
+            };
+        }
 
-    if (!snapshot.exists()) {
         return {
+            ok: true,
+            exists: true,
+            value: snapshot.data().value,
+            error: null
+        };
+    } catch (error) {
+        return {
+            ok: false,
             exists: false,
-            value: null
+            value: null,
+            error: error
         };
     }
-
-    return {
-        exists: true,
-        value: snapshot.data().value
-    };
 }
 
 function getLocalDataForCloud(key) {
@@ -187,72 +239,163 @@ function setLocalDataFromCloud(key, value) {
     );
 }
 
-async function uploadAllLocalData() {
-    for (const key of CLOUD_KEYS) {
-        if (!currentFirebaseUser) {
-            return;
-        }
-
-        await saveCloudData(
-            key,
-            getLocalDataForCloud(key)
-        );
-    }
-}
-
-// Firestore 전체가 느려져도 앱 전체가 기다리지 않도록 각 항목을 독립 처리한다.
-// 성공한 항목만 반영하고 실패한 항목은 현재 기기 데이터를 유지한다.
-async function loadCloudDataOrMigrate() {
-    const results = await Promise.all(
-        CLOUD_KEYS.map(async function (key) {
-            try {
-                const result = await getCloudData(key);
-                return {
-                    key: key,
-                    ok: true,
-                    result: result
-                };
-            } catch (error) {
-                console.error(`Firebase 읽기 실패 (${key})`, error);
-                return {
-                    key: key,
-                    ok: false,
-                    result: {
-                        exists: false,
-                        value: null
-                    }
-                };
-            }
-        })
-    );
-
-    if (!currentFirebaseUser) {
+function setLocalDataEmpty(key) {
+    if (key === "dailyStudyGoal") {
+        localStorage.setItem("dailyStudyGoal", "3600");
         return;
     }
 
-    let hasAnyCloudData = false;
+    localStorage.setItem(
+        key,
+        JSON.stringify([])
+    );
+}
 
-    results.forEach(function (item) {
+async function uploadAllLocalData(user) {
+    const targetUser = user || currentFirebaseUser;
+
+    if (!targetUser) {
+        return false;
+    }
+
+    let allSucceeded = true;
+
+    for (const key of CLOUD_KEYS) {
         if (
-            item.ok &&
-            item.result &&
-            item.result.exists
+            !currentFirebaseUser ||
+            currentFirebaseUser.uid !== targetUser.uid
         ) {
-            hasAnyCloudData = true;
-            setLocalDataFromCloud(
-                item.key,
-                item.result.value
-            );
+            return false;
         }
+
+        const succeeded = await saveCloudData(
+            key,
+            getLocalDataForCloud(key),
+            true
+        );
+
+        if (!succeeded) {
+            allSucceeded = false;
+        }
+    }
+
+    return allSucceeded;
+}
+
+// ------------------------------------------------------------
+// 클라우드 동기화
+// ------------------------------------------------------------
+// 클라우드 데이터가 존재하면 클라우드를 무조건 우선한다.
+// 이렇게 해야 PC와 모바일의 서로 다른 LocalStorage가
+// 로그인 순간 서로를 덮어쓰는 문제가 사라진다.
+async function loadCloudDataOrMigrate(user) {
+    const targetUser = user || currentFirebaseUser;
+
+    if (!targetUser) {
+        return {
+            status: "no-user",
+            cloudExists: false,
+            hadErrors: true
+        };
+    }
+
+    const results = await Promise.all(
+        CLOUD_KEYS.map(async function (key) {
+            const result = await getCloudData(key, targetUser);
+
+            return {
+                key: key,
+                result: result
+            };
+        })
+    );
+
+    if (
+        !currentFirebaseUser ||
+        currentFirebaseUser.uid !== targetUser.uid
+    ) {
+        return {
+            status: "cancelled",
+            cloudExists: false,
+            hadErrors: false
+        };
+    }
+
+    const successfulResults = results.filter(function (item) {
+        return item.result && item.result.ok;
     });
 
-    if (!hasAnyCloudData) {
-        // 최초 로그인 또는 클라우드 데이터가 아직 없는 계정:
-        // 현재 기기의 데이터를 백그라운드에서 업로드한다.
-        uploadAllLocalData().catch(function (error) {
-            console.error("첫 Firebase 데이터 업로드 실패:", error);
+    const failedResults = results.filter(function (item) {
+        return !item.result || !item.result.ok;
+    });
+
+    const existingCloudResults = successfulResults.filter(function (item) {
+        return item.result.exists;
+    });
+
+    const cloudExists = existingCloudResults.length > 0;
+
+    // --------------------------------------------------------
+    // 1) 이 계정에 이미 클라우드 데이터가 있다.
+    //    => 클라우드를 단일 진실 공급원으로 사용한다.
+    // --------------------------------------------------------
+    if (cloudExists) {
+        results.forEach(function (item) {
+            const result = item.result;
+
+            if (!result || !result.ok) {
+                // 읽기 실패는 기존 로컬 데이터를 건드리지 않는다.
+                return;
+            }
+
+            if (result.exists) {
+                setLocalDataFromCloud(
+                    item.key,
+                    result.value
+                );
+            } else {
+                // 일부 문서만 존재하는 오래된 계정은
+                // 없는 항목을 빈 데이터로 맞춰 기기별 차이를 없앤다.
+                setLocalDataEmpty(item.key);
+            }
         });
+
+        return {
+            status: failedResults.length > 0
+                ? "cloud-partial"
+                : "cloud-loaded",
+            cloudExists: true,
+            hadErrors: failedResults.length > 0
+        };
     }
+
+    // --------------------------------------------------------
+    // 2) 클라우드 데이터가 하나도 없고,
+    //    모든 읽기가 성공했다.
+    //    => 이 계정의 첫 로그인으로 간주하고 현재 로컬 데이터를
+    //       클라우드에 1회 이관한다.
+    // --------------------------------------------------------
+    if (failedResults.length === 0) {
+        const uploaded = await uploadAllLocalData(targetUser);
+
+        return {
+            status: uploaded
+                ? "migrated-local-to-cloud"
+                : "migration-failed",
+            cloudExists: false,
+            hadErrors: !uploaded
+        };
+    }
+
+    // --------------------------------------------------------
+    // 3) 클라우드가 없다고 확인된 것도 아니고 읽기 자체가 실패함.
+    //    => 로컬 데이터는 살려두되 절대 클라우드에 덮어쓰지 않는다.
+    // --------------------------------------------------------
+    return {
+        status: "read-failed",
+        cloudExists: false,
+        hadErrors: true
+    };
 }
 
 function refreshDashboardAfterCloudLoad() {
@@ -313,6 +456,9 @@ function describeAuthError(error) {
         case "auth/web-storage-unsupported":
             return "브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다.";
 
+        case "auth/internal-error":
+            return "Google 로그인 처리 중 브라우저 오류가 발생했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.";
+
         default:
             return error.message
                 ? "Google 로그인 오류: " + error.message
@@ -339,14 +485,24 @@ async function handleGoogleLogin() {
         });
 
         // PC/모바일 모두 popup을 사용한다.
-        // mobile redirect에서 발생하는 cross-origin storage 문제를 피한다.
+        // redirect 인증은 현재 구조에서 사용하지 않는다.
+        console.log("Google 팝업 로그인 시작");
+
         const result = await signInWithPopup(
             auth,
             googleProvider
         );
 
         if (result && result.user) {
-            console.log("Google 로그인 성공:", result.user.email);
+            console.log(
+                "Google 로그인 성공:",
+                result.user.email,
+                result.user.uid
+            );
+
+            // 모바일 브라우저에서 onAuthStateChanged 이벤트 전달이 늦더라도
+            // popup 결과 자체로 즉시 로그인 절차를 이어간다.
+            await activateSignedInUser(result.user);
         }
     } catch (error) {
         console.error("Google 로그인 오류:", error);
@@ -354,8 +510,6 @@ async function handleGoogleLogin() {
     } finally {
         authHandling = false;
 
-        // 로그인 성공 후에도 onAuthStateChanged가 상태를 관리하므로
-        // 버튼은 다시 사용할 수 있게 둔다.
         if (button) {
             button.disabled = false;
         }
@@ -369,6 +523,7 @@ async function handleLogout() {
 
     authHandling = true;
     cloudSyncReady = false;
+    cloudHydrating = false;
     authOperationId += 1;
 
     if (logoutButton) {
@@ -381,6 +536,8 @@ async function handleLogout() {
     try {
         await signOut(auth);
         currentFirebaseUser = null;
+        activeSyncPromise = null;
+        activeSyncUid = null;
         setAuthMessage("");
     } catch (error) {
         console.error("로그아웃 오류:", error);
@@ -389,7 +546,9 @@ async function handleLogout() {
             unlockDashboard();
         }
 
-        setAuthMessage("로그아웃에 실패했습니다. 다시 시도해주세요.");
+        setAuthMessage(
+            "로그아웃에 실패했습니다. 다시 시도해주세요."
+        );
     } finally {
         authHandling = false;
 
@@ -399,11 +558,38 @@ async function handleLogout() {
     }
 }
 
-async function handleSignedInUser(user) {
-    const operationId = ++authOperationId;
+async function activateSignedInUser(user) {
+    if (!user) {
+        return;
+    }
+
+    // 이미 같은 계정의 동기화가 끝났다면 중복 처리하지 않는다.
+    if (
+        currentFirebaseUser &&
+        currentFirebaseUser.uid === user.uid &&
+        cloudSyncReady &&
+        !cloudHydrating
+    ) {
+        unlockDashboard();
+        return;
+    }
+
+    // 동일한 UID에 대한 인증 이벤트가 중복으로 들어오는 경우
+    // 동일한 동기화를 두 번 실행하지 않는다.
+    if (
+        activeSyncPromise &&
+        activeSyncUid === user.uid
+    ) {
+        await activeSyncPromise;
+        return;
+    }
 
     currentFirebaseUser = user;
     cloudSyncReady = false;
+    cloudHydrating = true;
+
+    const operationId = ++authOperationId;
+    activeSyncUid = user.uid;
 
     if (accountUserName) {
         accountUserName.textContent =
@@ -412,60 +598,99 @@ async function handleSignedInUser(user) {
             "Google 사용자";
     }
 
-    // 인증 자체가 성공하면 즉시 앱을 연다.
-    unlockDashboard();
-
-    // 로컬 데이터를 즉시 표시한다.
-    try {
-        refreshDashboardAfterCloudLoad();
-    } catch (error) {
-        console.error("로컬 데이터 화면 갱신 실패:", error);
-    }
-
+    // 이 시점에는 아직 dashboard를 열지 않는다.
+    // 먼저 PC에 있는 클라우드 데이터를 가져와서
+    // 모바일 로컬 데이터가 클라우드를 덮어쓰는 것을 막는다.
     setAuthMessage("클라우드 데이터를 확인하는 중...");
 
-    // Firestore는 화면을 막지 않는다.
-    // 실패/지연되어도 현재 기기 데이터로 정상 사용 가능하다.
-    try {
-        await loadCloudDataOrMigrate();
-
-        if (
-            operationId !== authOperationId ||
-            !currentFirebaseUser ||
-            currentFirebaseUser.uid !== user.uid
-        ) {
-            return;
-        }
-
-        cloudSyncReady = true;
-
+    const syncPromise = (async function () {
         try {
-            refreshDashboardAfterCloudLoad();
+            const result = await loadCloudDataOrMigrate(user);
+
+            if (
+                operationId !== authOperationId ||
+                !currentFirebaseUser ||
+                currentFirebaseUser.uid !== user.uid
+            ) {
+                return;
+            }
+
+            // 클라우드 데이터를 로컬에 반영한 뒤 normalize/render.
+            // 이때는 cloudHydrating=true라서 render 중 발생하는 저장은
+            // Firestore로 전송되지 않는다.
+            try {
+                refreshDashboardAfterCloudLoad();
+            } catch (error) {
+                console.error(
+                    "데이터 화면 갱신 실패:",
+                    error
+                );
+            }
+
+            cloudHydrating = false;
+            cloudSyncReady = true;
+
+            unlockDashboard();
+
+            if (result.status === "read-failed") {
+                setAuthMessage(
+                    "로그인은 완료됐지만 클라우드 데이터를 확인하지 못했습니다. 현재 기기 데이터를 유지합니다."
+                );
+            } else if (result.status === "cloud-partial") {
+                setAuthMessage(
+                    "로그인은 완료됐습니다. 일부 클라우드 데이터를 확인하지 못했습니다."
+                );
+            } else {
+                setAuthMessage("");
+            }
         } catch (error) {
-            console.error("클라우드 데이터 화면 갱신 실패:", error);
+            console.error(
+                "Firebase 데이터 동기화 실패:",
+                error
+            );
+
+            if (
+                operationId !== authOperationId ||
+                !currentFirebaseUser ||
+                currentFirebaseUser.uid !== user.uid
+            ) {
+                return;
+            }
+
+            cloudHydrating = false;
+            cloudSyncReady = false;
+
+            try {
+                // 클라우드 오류가 나더라도 앱 자체는 들어갈 수 있게 한다.
+                refreshDashboardAfterCloudLoad();
+            } catch (renderError) {
+                console.error(
+                    "로컬 데이터 화면 갱신 실패:",
+                    renderError
+                );
+            }
+
+            unlockDashboard();
+            setAuthMessage(
+                "로그인은 완료됐지만 클라우드 동기화에 실패했습니다. 현재 기기의 데이터를 사용합니다."
+            );
         }
+    })();
 
-        setAuthMessage("");
-    } catch (error) {
-        console.error("Firebase 데이터 불러오기 실패:", error);
+    activeSyncPromise = syncPromise;
 
-        if (
-            operationId !== authOperationId ||
-            !currentFirebaseUser ||
-            currentFirebaseUser.uid !== user.uid
-        ) {
-            return;
+    try {
+        await syncPromise;
+    } finally {
+        if (activeSyncUid === user.uid) {
+            activeSyncPromise = null;
+            activeSyncUid = null;
         }
-
-        cloudSyncReady = false;
-        setAuthMessage(
-            "클라우드 동기화에 실패했습니다. 현재 기기의 데이터로 계속 사용합니다."
-        );
     }
 }
 
-// 인증 상태 리스너는 페이지 시작 시 바로 등록한다.
-// 모바일 redirect 결과를 기다렸다가 등록하는 구조를 제거했다.
+// 인증 상태 리스너는 페이지 시작 즉시 등록한다.
+// redirect 결과를 따로 기다리지 않는다.
 onAuthStateChanged(
     auth,
     async function (user) {
@@ -473,6 +698,9 @@ onAuthStateChanged(
             authOperationId += 1;
             currentFirebaseUser = null;
             cloudSyncReady = false;
+            cloudHydrating = false;
+            activeSyncPromise = null;
+            activeSyncUid = null;
 
             lockDashboard();
 
@@ -488,13 +716,17 @@ onAuthStateChanged(
             return;
         }
 
-        await handleSignedInUser(user);
+        await activateSignedInUser(user);
     },
     function (error) {
-        console.error("Firebase 인증 상태 감시 실패:", error);
+        console.error(
+            "Firebase 인증 상태 감시 실패:",
+            error
+        );
 
         currentFirebaseUser = null;
         cloudSyncReady = false;
+        cloudHydrating = false;
         lockDashboard();
         setAuthMessage(
             "로그인 상태를 확인하지 못했습니다. 페이지를 새로고침해주세요."
