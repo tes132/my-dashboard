@@ -37,31 +37,79 @@ const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
 // ------------------------------------------------------------
+// 모바일 브라우저 판별
+// ------------------------------------------------------------
+// PC에서 정상 동작하는 인증 흐름은 그대로 두고,
+// Android / iPhone / iPad 계열에서는 인증 저장소와
+// 로그인 후 동기화의 실패 처리를 더 보수적으로 한다.
+const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(
+    navigator.userAgent || ""
+);
+
+// ------------------------------------------------------------
 // 인증 저장소
 // ------------------------------------------------------------
-// 모바일에서 localStorage가 제한된 환경이더라도
-// session -> memory 순서로 내려가며 로그인 자체는 진행되도록 한다.
-const authPersistenceReady = setPersistence(
-    auth,
-    browserLocalPersistence
-).catch(async function (error) {
-    console.warn("browserLocalPersistence 실패. session persistence로 전환합니다.", error);
-
-    try {
-        await setPersistence(auth, browserSessionPersistence);
-        return true;
-    } catch (sessionError) {
-        console.warn("browserSessionPersistence도 실패. memory persistence로 전환합니다.", sessionError);
-
+// PC: 기존 local persistence 유지
+// 모바일: 삼성 인터넷 등에서 local persistence가 불안정한 경우를
+// 피하기 위해 session -> memory 순서로 안전하게 내려간다.
+const authPersistenceReady = (async function () {
+    if (isMobileBrowser) {
         try {
-            await setPersistence(auth, inMemoryPersistence);
+            await setPersistence(auth, browserSessionPersistence);
+            console.log("모바일 인증: session persistence 사용");
             return true;
-        } catch (memoryError) {
-            console.error("Firebase 로그인 persistence 설정 실패:", memoryError);
-            return false;
+        } catch (sessionError) {
+            console.warn(
+                "모바일 session persistence 실패. memory persistence로 전환합니다.",
+                sessionError
+            );
+
+            try {
+                await setPersistence(auth, inMemoryPersistence);
+                console.log("모바일 인증: memory persistence 사용");
+                return true;
+            } catch (memoryError) {
+                console.error(
+                    "모바일 Firebase persistence 설정 실패:",
+                    memoryError
+                );
+                return false;
+            }
         }
     }
-});
+
+    try {
+        await setPersistence(auth, browserLocalPersistence);
+        console.log("PC 인증: local persistence 사용");
+        return true;
+    } catch (localError) {
+        console.warn(
+            "browserLocalPersistence 실패. session persistence로 전환합니다.",
+            localError
+        );
+
+        try {
+            await setPersistence(auth, browserSessionPersistence);
+            return true;
+        } catch (sessionError) {
+            console.warn(
+                "browserSessionPersistence도 실패. memory persistence로 전환합니다.",
+                sessionError
+            );
+
+            try {
+                await setPersistence(auth, inMemoryPersistence);
+                return true;
+            } catch (memoryError) {
+                console.error(
+                    "Firebase 로그인 persistence 설정 실패:",
+                    memoryError
+                );
+                return false;
+            }
+        }
+    }
+})();
 
 let currentFirebaseUser = null;
 let cloudSyncReady = false;
@@ -187,7 +235,7 @@ async function getCloudData(key, user) {
                     key
                 )
             ),
-            5000,
+            3500,
             "Firestore 읽기"
         );
 
@@ -475,10 +523,20 @@ async function handleGoogleLogin() {
 
     authHandling = true;
     button.disabled = true;
-    setAuthMessage("Google 로그인 중...");
+    setAuthMessage(
+        isMobileBrowser
+            ? "Google 로그인 창을 여는 중..."
+            : "Google 로그인 중..."
+    );
 
     try {
-        await authPersistenceReady;
+        const persistenceOk = await authPersistenceReady;
+
+        if (!persistenceOk && isMobileBrowser) {
+            console.warn(
+                "모바일 인증 persistence 설정에 실패했지만 popup 로그인을 계속 시도합니다."
+            );
+        }
 
         googleProvider.setCustomParameters({
             prompt: "select_account"
@@ -494,6 +552,13 @@ async function handleGoogleLogin() {
         );
 
         if (result && result.user) {
+            console.log(
+                isMobileBrowser
+                    ? "[MOBILE] Google 계정 선택 완료"
+                    : "[PC] Google 계정 선택 완료",
+                result.user.email,
+                result.user.uid
+            );
             console.log(
                 "Google 로그인 성공:",
                 result.user.email,
@@ -558,6 +623,20 @@ async function handleLogout() {
     }
 }
 
+async function runUserSyncWithTimeout(user, timeoutMs) {
+    const syncPromise = loadCloudDataOrMigrate(user);
+
+    if (!isMobileBrowser) {
+        return await syncPromise;
+    }
+
+    return await withTimeout(
+        syncPromise,
+        timeoutMs,
+        "모바일 클라우드 동기화"
+    );
+}
+
 async function activateSignedInUser(user) {
     if (!user) {
         return;
@@ -601,11 +680,20 @@ async function activateSignedInUser(user) {
     // 이 시점에는 아직 dashboard를 열지 않는다.
     // 먼저 PC에 있는 클라우드 데이터를 가져와서
     // 모바일 로컬 데이터가 클라우드를 덮어쓰는 것을 막는다.
-    setAuthMessage("클라우드 데이터를 확인하는 중...");
+    setAuthMessage(
+        isMobileBrowser
+            ? "Google 로그인 완료. 클라우드 데이터를 확인하는 중..."
+            : "클라우드 데이터를 확인하는 중..."
+    );
 
     const syncPromise = (async function () {
         try {
-            const result = await loadCloudDataOrMigrate(user);
+            // 모바일은 어떤 이유로 Firestore가 응답하지 않아도
+            // 8초 이상 로그인 화면에 갇히지 않도록 강제 제한한다.
+            const result = await runUserSyncWithTimeout(
+                user,
+                8000
+            );
 
             if (
                 operationId !== authOperationId ||
@@ -634,11 +722,15 @@ async function activateSignedInUser(user) {
 
             if (result.status === "read-failed") {
                 setAuthMessage(
-                    "로그인은 완료됐지만 클라우드 데이터를 확인하지 못했습니다. 현재 기기 데이터를 유지합니다."
+                    isMobileBrowser
+                        ? "로그인은 완료됐지만 클라우드 데이터 연결에 실패했습니다. 현재 기기 데이터로 입장합니다."
+                        : "로그인은 완료됐지만 클라우드 데이터를 확인하지 못했습니다. 현재 기기 데이터를 유지합니다."
                 );
             } else if (result.status === "cloud-partial") {
                 setAuthMessage(
-                    "로그인은 완료됐습니다. 일부 클라우드 데이터를 확인하지 못했습니다."
+                    isMobileBrowser
+                        ? "로그인은 완료됐습니다. 일부 클라우드 데이터를 불러오지 못했습니다."
+                        : "로그인은 완료됐습니다. 일부 클라우드 데이터를 확인하지 못했습니다."
                 );
             } else {
                 setAuthMessage("");
@@ -672,7 +764,9 @@ async function activateSignedInUser(user) {
 
             unlockDashboard();
             setAuthMessage(
-                "로그인은 완료됐지만 클라우드 동기화에 실패했습니다. 현재 기기의 데이터를 사용합니다."
+                isMobileBrowser
+                    ? "로그인은 완료됐습니다. 클라우드 응답이 늦어 현재 기기 데이터로 입장합니다."
+                    : "로그인은 완료됐지만 클라우드 동기화에 실패했습니다. 현재 기기의 데이터를 사용합니다."
             );
         }
     })();
@@ -729,7 +823,9 @@ onAuthStateChanged(
         cloudHydrating = false;
         lockDashboard();
         setAuthMessage(
-            "로그인 상태를 확인하지 못했습니다. 페이지를 새로고침해주세요."
+            isMobileBrowser
+                ? "모바일에서 로그인 상태를 확인하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요."
+                : "로그인 상태를 확인하지 못했습니다. 페이지를 새로고침해주세요."
         );
     }
 );
