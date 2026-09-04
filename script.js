@@ -7655,6 +7655,28 @@ function enableTouchReorder(listElement, cardSelector, saveOrder) {
 }
 
 // ============================================================
+// 모바일 / iPad 터치 정렬 연결
+// ============================================================
+
+enableTouchReorder(
+    memoList,
+    ".memo-card",
+    saveMemoOrder
+);
+
+enableTouchReorder(
+    ddayList,
+    ".dday-card",
+    saveDDays
+);
+
+enableTouchReorder(
+    projectList,
+    ".project-item",
+    saveProjectOrder
+);
+
+// ============================================================
 // 39. 초기화
 // ============================================================
 

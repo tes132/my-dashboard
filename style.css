@@ -2271,3 +2271,15 @@ button:hover {
         gap: 10px;
     }
 }
+
+
+
+
+
+
+/*드래그핸들*/
+.memo-drag-handle,
+.dday-drag-handle,
+.project-drag-handle {
+    touch-action: none;
+}
