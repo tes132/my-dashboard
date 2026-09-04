@@ -628,7 +628,7 @@ async function getTodoAlarmServiceWorker() {
     }
 
     todoAlarmServiceWorkerRegistration = await navigator.serviceWorker.register(
-        "/firebase-messaging-sw.js"
+        "./firebase-messaging-sw.js"
     );
 
     return todoAlarmServiceWorkerRegistration;
