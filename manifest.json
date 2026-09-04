@@ -1,0 +1,9 @@
+{
+  "name": "My Dashboard",
+  "short_name": "My Dashboard",
+  "start_url": "/my-dashboard/",
+  "scope": "/my-dashboard/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}
