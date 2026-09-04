@@ -219,7 +219,7 @@ function refreshDashboardAfterCloudLoad() {
     showDailyStudyGoal();
 }
 
-async function handleGoogleLogin() {
+async async function handleGoogleLogin() {
     if (!googleLoginButton) return;
 
     googleLoginButton.disabled = true;
