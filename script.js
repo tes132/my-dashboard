@@ -86,6 +86,17 @@ async function saveCloudData(key, data) {
     }
 }
 
+function withTimeout(promise, ms, label) {
+    return Promise.race([
+        promise,
+        new Promise(function (_, reject) {
+            setTimeout(function () {
+                reject(new Error(label + " 시간 초과"));
+            }, ms);
+        })
+    ]);
+}
+
 async function getCloudData(key) {
     if (!currentFirebaseUser) {
         return {
@@ -94,14 +105,18 @@ async function getCloudData(key) {
         };
     }
 
-    const snapshot = await getDoc(
-        doc(
-            db,
-            "users",
-            currentFirebaseUser.uid,
-            "data",
-            key
-        )
+    const snapshot = await withTimeout(
+        getDoc(
+            doc(
+                db,
+                "users",
+                currentFirebaseUser.uid,
+                "data",
+                key
+            )
+        ),
+        6000,
+        "Firestore 읽기"
     );
 
     if (!snapshot.exists()) {
@@ -158,17 +173,28 @@ async function uploadAllLocalData() {
 }
 
 async function loadCloudDataOrMigrate() {
+    const results = await withTimeout(
+        Promise.all(
+            CLOUD_KEYS.map(async function (key) {
+                return {
+                    key: key,
+                    result: await getCloudData(key)
+                };
+            })
+        ),
+        9000,
+        "Firebase 동기화"
+    );
+
     let hasAnyCloudData = false;
     const cloudValues = {};
 
-    for (const key of CLOUD_KEYS) {
-        const result = await getCloudData(key);
-
-        if (result.exists) {
+    results.forEach(function (item) {
+        if (item.result.exists) {
             hasAnyCloudData = true;
-            cloudValues[key] = result.value;
+            cloudValues[item.key] = item.result.value;
         }
-    }
+    });
 
     if (hasAnyCloudData) {
         for (const key of CLOUD_KEYS) {
@@ -185,9 +211,12 @@ async function loadCloudDataOrMigrate() {
             }
         }
     } else {
-        // 첫 로그인 기기라면 기존 LocalStorage 데이터를
-        // 클라우드로 한 번 올린다.
-        await uploadAllLocalData();
+        uploadAllLocalData().catch(function (error) {
+            console.error(
+                "첫 Firebase 데이터 업로드 실패:",
+                error
+            );
+        });
     }
 }
 
@@ -223,9 +252,7 @@ function refreshDashboardAfterCloudLoad() {
 
 async function handleGoogleLogin() {
     const button =
-        document.getElementById(
-            "googleLoginButton"
-        );
+        document.getElementById("googleLoginButton");
 
     if (!button) {
         console.error(
@@ -238,23 +265,24 @@ async function handleGoogleLogin() {
     setAuthMessage("Google 로그인 중...");
 
     try {
-        const result =
-            await signInWithPopup(
-                auth,
-                googleProvider
+        googleProvider.setCustomParameters({
+            prompt: "select_account"
+        });
+
+        const result = await signInWithPopup(
+            auth,
+            googleProvider
+        );
+
+        if (result && result.user) {
+            console.log(
+                "Google 로그인 성공:",
+                result.user.email
             );
-
-        console.log(
-            "Google 로그인 성공:",
-            result.user.email
-        );
-
-        setAuthMessage(
-            "로그인 완료. Dashboard를 불러오는 중..."
-        );
+        }
     } catch (error) {
         console.error(
-            "Google 로그인 오류:",
+            "Google popup 로그인 오류:",
             error
         );
 
@@ -288,39 +316,50 @@ async function handleGoogleLogin() {
 
         button.disabled = false;
 
-        let message =
-            "로그인에 실패했습니다. 다시 시도해주세요.";
-
         if (
             error &&
-            error.code ===
-                "auth/popup-closed-by-user"
+            error.code === "auth/popup-closed-by-user"
         ) {
-            message =
-                "Google 로그인 창이 닫혔습니다.";
+            setAuthMessage(
+                "Google 로그인 창이 닫혔습니다."
+            );
         } else if (
             error &&
-            error.code ===
-                "auth/unauthorized-domain"
+            error.code === "auth/unauthorized-domain"
         ) {
-            message =
-                "현재 GitHub Pages 주소가 Firebase 승인된 도메인에 없습니다.";
+            setAuthMessage(
+                "현재 GitHub Pages 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다."
+            );
         } else if (
             error &&
-            error.code ===
-                "auth/operation-not-allowed"
+            error.code === "auth/operation-not-allowed"
         ) {
-            message =
-                "Firebase에서 Google 로그인이 활성화되어 있지 않습니다.";
+            setAuthMessage(
+                "Firebase에서 Google 로그인이 활성화되어 있지 않습니다."
+            );
         } else if (error && error.message) {
-            message =
+            setAuthMessage(
                 "Google 로그인 오류: " +
-                error.message;
+                error.message
+            );
         }
-
-        setAuthMessage(message);
     }
 }
+
+async function handleLogout() {
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.error(
+            "로그아웃 오류:",
+            error
+        );
+        setAuthMessage(
+            "로그아웃에 실패했습니다. 다시 시도해주세요."
+        );
+    }
+}
+
 
 document.addEventListener(
     "click",
@@ -336,6 +375,7 @@ document.addEventListener(
     }
 );
 
+
 if (logoutButton) {
     logoutButton.addEventListener(
         "click",
@@ -344,21 +384,21 @@ if (logoutButton) {
 }
 
 
-
-
-getRedirectResult(auth).catch(function (error) {
-    console.error(
-        "Google redirect 로그인 결과 처리 실패:",
-        error
-    );
-
-    if (error && error.message) {
-        setAuthMessage(
-            "Google 로그인 오류: " +
-            error.message
+getRedirectResult(auth).catch(
+    function (error) {
+        console.error(
+            "Google redirect 결과 처리 실패:",
+            error
         );
+
+        if (error && error.message) {
+            setAuthMessage(
+                "Google 로그인 오류: " +
+                error.message
+            );
+        }
     }
-});
+);
 
 
 onAuthStateChanged(
@@ -392,34 +432,38 @@ onAuthStateChanged(
                 "Google 사용자";
         }
 
+        // Auth 성공 즉시 Dashboard를 연다.
         document.body.classList.remove(
             "auth-locked"
         );
 
-        setAuthMessage(
-            "데이터를 동기화하는 중..."
-        );
-
+        // 먼저 현재 기기의 로컬 데이터를 보여준다.
         refreshDashboardAfterCloudLoad();
+
+        setAuthMessage(
+            "클라우드 데이터를 동기화하는 중..."
+        );
 
         try {
             await loadCloudDataOrMigrate();
 
             cloudSyncReady = true;
 
+            // 클라우드 데이터가 있으면 화면 갱신.
             refreshDashboardAfterCloudLoad();
 
             setAuthMessage("");
         } catch (error) {
             console.error(
-                "Firebase 데이터 불러오기 실패",
+                "Firebase 데이터 불러오기 실패:",
                 error
             );
 
             cloudSyncReady = false;
 
+            // Firestore 실패 때문에 앱을 잠그지 않는다.
             setAuthMessage(
-                "클라우드 데이터를 불러오지 못했습니다. Firestore 설정과 보안 규칙을 확인해주세요."
+                "클라우드 동기화에 실패했습니다. 현재 기기의 데이터로 계속 사용합니다."
             );
         }
     }
