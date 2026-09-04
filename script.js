@@ -6,8 +6,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebas
 import {
     getAuth,
     GoogleAuthProvider,
+    getRedirectResult,
     onAuthStateChanged,
     signInWithPopup,
+    signInWithRedirect,
     signOut
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import {
@@ -219,22 +221,38 @@ function refreshDashboardAfterCloudLoad() {
     showDailyStudyGoal();
 }
 
-async async function handleGoogleLogin() {
+async function handleGoogleLogin() {
     if (!googleLoginButton) return;
 
     googleLoginButton.disabled = true;
     setAuthMessage("Google 로그인 중...");
 
+    // 모바일에서는 팝업이 차단되거나 정상적으로 열리지 않는 경우가 많아서
+    // Firebase 공식 권장 방식인 redirect를 사용한다.
+    const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(
+            navigator.userAgent
+        );
+
     try {
+        if (isMobile) {
+            await signInWithRedirect(
+                auth,
+                googleProvider
+            );
+            return;
+        }
+
+        // PC에서는 현재 정상 작동하는 popup 방식을 유지한다.
         const result = await signInWithPopup(
             auth,
             googleProvider
         );
 
-        // onAuthStateChanged가 최종 Dashboard 진입과
-        // 클라우드 데이터 로드를 처리한다.
         if (result && result.user) {
-            setAuthMessage("로그인 완료. Dashboard를 불러오는 중...");
+            setAuthMessage(
+                "로그인 완료. Dashboard를 불러오는 중..."
+            );
         }
     } catch (error) {
         console.error("Google 로그인 오류:", error);
@@ -244,32 +262,36 @@ async async function handleGoogleLogin() {
         let message =
             "로그인에 실패했습니다. 다시 시도해주세요.";
 
-        if (error && error.code === "auth/popup-closed-by-user") {
+        if (
+            error &&
+            error.code === "auth/popup-closed-by-user"
+        ) {
             message = "로그인 창이 닫혔습니다.";
         } else if (
             error &&
             error.code === "auth/popup-blocked"
         ) {
             message =
-                "브라우저에서 팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해주세요.";
+                "로그인 창이 차단되었습니다. 브라우저의 팝업 허용 후 다시 시도해주세요.";
         } else if (
             error &&
             error.code === "auth/unauthorized-domain"
         ) {
             message =
                 "현재 사이트 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다.";
+        } else if (
+            error &&
+            error.code === "auth/web-storage-unsupported"
+        ) {
+            message =
+                "현재 브라우저에서 로그인 저장 기능을 사용할 수 없습니다.";
+        } else if (error && error.message) {
+            message =
+                "Google 로그인 오류: " +
+                error.message;
         }
 
         setAuthMessage(message);
-    }
-}
-
-async function handleLogout() {
-    try {
-        await signOut(auth);
-    } catch (error) {
-        console.error(error);
-        alert("로그아웃 중 오류가 발생했습니다.");
     }
 }
 
@@ -286,6 +308,30 @@ if (logoutButton) {
         handleLogout
     );
 }
+
+
+// 모바일 redirect 로그인으로 Google 인증을 마치고 돌아왔을 때
+// 결과를 Firebase Auth에서 처리한다.
+getRedirectResult(auth).catch(function (error) {
+    console.error(
+        "Google redirect 로그인 결과 처리 실패:",
+        error
+    );
+
+    if (
+        error &&
+        error.code === "auth/unauthorized-domain"
+    ) {
+        setAuthMessage(
+            "현재 사이트 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다."
+        );
+    } else if (error && error.message) {
+        setAuthMessage(
+            "Google 로그인 오류: " +
+            error.message
+        );
+    }
+});
 
 
 onAuthStateChanged(
