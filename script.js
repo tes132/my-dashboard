@@ -7504,11 +7504,6 @@ let stopwatchCurrentCategory =
     "";
 
 
-// 스톱워치 집중 모드: 수동 정지/초기화 전까지 앱 내부 이동을 막는다.
-let stopwatchAutoPaused =
-    false;
-
-
 function updateStopwatchDisplay() {
 
     if (!stopwatchDisplay) {
@@ -7680,7 +7675,54 @@ function saveCurrentStudyRecord() {
 }
 
 
+// ------------------------------------------------------------
+// 스톱워치 집중 모드
+// ------------------------------------------------------------
+// 다른 탭/앱으로 이동하면 페이지가 숨겨지는지 감지해서
+// 실행 중인 스톱워치를 자동 일시정지한다.
+// 대시보드로 돌아온 뒤에는 "재개" 버튼으로 이어서 측정한다.
+let stopwatchPausedByVisibility = false;
+
+function pauseStopwatchForLeavingPage() {
+    if (!stopwatchRunning) {
+        return;
+    }
+
+    clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchRunning = false;
+    stopwatchPausedByVisibility = true;
+
+    if (stopwatchStartButton) {
+        stopwatchStartButton.textContent = "재개";
+    }
+}
+
 function startStopwatch() {
+
+    // 다른 탭/앱으로 나갔다가 돌아온 뒤의 재개
+    if (stopwatchPausedByVisibility) {
+        stopwatchPausedByVisibility = false;
+        stopwatchRunning = true;
+
+        if (stopwatchCategory) {
+            stopwatchCategory.disabled = true;
+        }
+
+        if (stopwatchStartButton) {
+            stopwatchStartButton.textContent = "정지";
+        }
+
+        stopwatchInterval = setInterval(
+            function () {
+                stopwatchSeconds++;
+                updateStopwatchDisplay();
+            },
+            1000
+        );
+
+        return;
+    }
 
     if (
         stopwatchRunning
@@ -7690,65 +7732,29 @@ function startStopwatch() {
             stopwatchInterval
         );
 
-        stopwatchInterval =
-            null;
+        stopwatchInterval = null;
 
         stopwatchRunning =
             false;
 
-        stopwatchAutoPaused =
-            false;
+        stopwatchPausedByVisibility = false;
 
         saveCurrentStudyRecord();
 
-        // 기존 동작 그대로 종료 후 시간을 초기화한다.
+        //초기화
         stopwatchSeconds = 0;
 
+
         updateStopwatchDisplay();
+
 
         stopwatchStartButton.textContent =
             "시작";
 
+
         stopwatchCategory.disabled =
             false;
 
-        if (stopwatchDisplay) {
-            stopwatchDisplay.title = "";
-        }
-
-        return;
-    }
-
-
-    // 페이지 이탈로 자동 일시정지된 경우 같은 카테고리로 이어서 시작한다.
-    if (
-        stopwatchAutoPaused
-    ) {
-
-        stopwatchRunning =
-            true;
-
-        stopwatchAutoPaused =
-            false;
-
-        stopwatchCategory.disabled =
-            true;
-
-        stopwatchStartButton.textContent =
-            "정지";
-
-        if (stopwatchDisplay) {
-            stopwatchDisplay.title = "";
-        }
-
-        stopwatchInterval =
-            setInterval(
-                function () {
-                    stopwatchSeconds++;
-                    updateStopwatchDisplay();
-                },
-                1000
-            );
 
         return;
     }
@@ -7769,12 +7775,11 @@ function startStopwatch() {
     stopwatchCurrentCategory =
         stopwatchCategory.value;
 
+    stopwatchPausedByVisibility = false;
+
 
     stopwatchRunning =
         true;
-
-    stopwatchAutoPaused =
-        false;
 
 
     stopwatchCategory.disabled =
@@ -7805,8 +7810,8 @@ function resetStopwatch() {
         stopwatchInterval
     );
 
-    stopwatchInterval =
-        null;
+    stopwatchInterval = null;
+    stopwatchPausedByVisibility = false;
 
 
     stopwatchSeconds =
@@ -7816,113 +7821,57 @@ function resetStopwatch() {
     stopwatchRunning =
         false;
 
-    stopwatchAutoPaused =
-        false;
-
     stopwatchCurrentCategory =
         "";
 
 
-    // ============================================================
-// 스톱워치 집중 모드
-// ============================================================
+    if (stopwatchCategory) {
 
-function isStopwatchFocusActive() {
-    return stopwatchRunning || stopwatchAutoPaused;
+        stopwatchCategory.disabled =
+            false;
+
+        stopwatchCategory.value =
+            "";
+
+    }
+
+
+    if (stopwatchStartButton) {
+
+        stopwatchStartButton.textContent =
+            "시작";
+
+    }
+
+
+    updateStopwatchDisplay();
 }
 
-function pauseStopwatchByLeavingPage() {
-    if (!stopwatchRunning) {
+
+// ============================================================
+// 스톱워치 집중 모드: 다른 탭/앱으로 나가면 자동 일시정지
+// ============================================================
+document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") {
+        pauseStopwatchForLeavingPage();
         return;
     }
 
-    clearInterval(stopwatchInterval);
-    stopwatchInterval = null;
-
-    stopwatchRunning = false;
-    stopwatchAutoPaused = true;
-
-    if (stopwatchStartButton) {
+    // 다시 대시보드로 돌아오면 자동 재개하지 않는다.
+    // 시간이 저절로 계속 흐르지 않도록 "재개" 상태를 유지한다.
+    if (
+        document.visibilityState === "visible" &&
+        stopwatchPausedByVisibility &&
+        stopwatchStartButton
+    ) {
         stopwatchStartButton.textContent = "재개";
     }
-
-    if (stopwatchDisplay) {
-        stopwatchDisplay.title =
-            "집중 모드: 다른 탭이나 앱으로 이동하여 일시정지되었습니다.";
-    }
-
-    console.log("스톱워치 집중 모드: 자동 일시정지");
-}
-
-// 다른 탭/앱으로 이동하면 스톱워치를 자동 일시정지한다.
-document.addEventListener("visibilitychange", function () {
-    if (
-        document.visibilityState === "hidden" &&
-        stopwatchRunning
-    ) {
-        pauseStopwatchByLeavingPage();
-    }
 });
 
-// 새로고침/탭 닫기 시에는 브라우저 이탈 경고를 요청한다.
-window.addEventListener("beforeunload", function (event) {
-    if (!isStopwatchFocusActive()) {
-        return;
-    }
-
-    event.preventDefault();
-    event.returnValue = "";
+// 다른 창으로 포커스가 이동한 경우를 보완한다.
+window.addEventListener("blur", function () {
+    pauseStopwatchForLeavingPage();
 });
-
-
-if (stopwatchCategory) {
-
-        stopwatchCategory.disabled =
-            false;
-
-        stopwatchCategory.value =
-            "";
-
-    }
-
-
-    if (stopwatchStartButton) {
-
-        stopwatchStartButton.textContent =
-            "시작";
-
-    }
-
-    if (stopwatchDisplay) {
-        stopwatchDisplay.title = "";
-    }
-
-
-    updateStopwatchDisplay();
-}
-
-
-if (stopwatchCategory) {
-
-        stopwatchCategory.disabled =
-            false;
-
-        stopwatchCategory.value =
-            "";
-
-    }
-
-
-    if (stopwatchStartButton) {
-
-        stopwatchStartButton.textContent =
-            "시작";
-
-    }
-
-
-    updateStopwatchDisplay();
-
 
 
 if (stopwatchCategory) {
@@ -8902,27 +8851,7 @@ const TAB_ACTIONS = [
 
 TAB_ACTIONS.forEach(([tab, section, render]) => {
     if (!tab || !section) return;
-    tab.addEventListener("click", (event) => {
-        // 집중 모드에서는 수동 정지/초기화 전까지 다른 기능 화면으로 이동하지 않는다.
-        if (
-            tab !== stopwatchTab &&
-            isStopwatchFocusActive()
-        ) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            alert(
-                stopwatchAutoPaused
-                    ? "스톱워치가 일시정지되어 있습니다. 스톱워치에서 [재개] 또는 [정지]를 눌러주세요."
-                    : "스톱워치 집중 모드입니다. 공부를 끝내려면 스톱워치에서 [정지]를 눌러주세요."
-            );
-
-            if (stopwatchTab && stopwatchSection) {
-                showSection(stopwatchSection, stopwatchTab);
-            }
-            return;
-        }
-
+    tab.addEventListener("click", () => {
         showSection(section, tab);
         render();
     });
