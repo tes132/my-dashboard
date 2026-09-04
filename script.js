@@ -659,7 +659,7 @@ async function registerTodoPushToken() {
 
     if (
         !TODO_ALARM_VAPID_KEY ||
-        TODO_ALARM_VAPID_KEY === "YOUR_PUBLIC_VAPID_KEY_HERE"
+        TODO_ALARM_VAPID_KEY === "BHmtqG5VzPik-yvduK5SXku68vQ2v5XykfsHVbXp3RFdk2GMXRCSM7XG-6DR4-eSlHqJS-ou_VTgGUqHKv8iYqs"
     ) {
         throw new Error(
             "Firebase Web Push 공개 키(VAPID key)를 코드에 등록해야 합니다."
