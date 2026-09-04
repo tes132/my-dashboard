@@ -6,9 +6,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebas
 import {
     getAuth,
     GoogleAuthProvider,
-    getRedirectResult,
     onAuthStateChanged,
-    signInWithRedirect,
+    signInWithPopup,
     signOut
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import {
@@ -59,7 +58,7 @@ function setAuthMessage(message) {
 }
 
 async function saveCloudData(key, data) {
-    if (!currentFirebaseUser || !cloudSyncReady) {
+    if (!currentFirebaseUser) {
         return;
     }
 
@@ -224,19 +223,44 @@ async function handleGoogleLogin() {
     if (!googleLoginButton) return;
 
     googleLoginButton.disabled = true;
-    setAuthMessage("Google 로그인 페이지로 이동합니다...");
+    setAuthMessage("Google 로그인 중...");
 
     try {
-        await signInWithRedirect(
+        const result = await signInWithPopup(
             auth,
             googleProvider
         );
+
+        // onAuthStateChanged가 최종 Dashboard 진입과
+        // 클라우드 데이터 로드를 처리한다.
+        if (result && result.user) {
+            setAuthMessage("로그인 완료. Dashboard를 불러오는 중...");
+        }
     } catch (error) {
-        console.error(error);
+        console.error("Google 로그인 오류:", error);
+
         googleLoginButton.disabled = false;
-        setAuthMessage(
-            "로그인에 실패했습니다. 다시 시도해주세요."
-        );
+
+        let message =
+            "로그인에 실패했습니다. 다시 시도해주세요.";
+
+        if (error && error.code === "auth/popup-closed-by-user") {
+            message = "로그인 창이 닫혔습니다.";
+        } else if (
+            error &&
+            error.code === "auth/popup-blocked"
+        ) {
+            message =
+                "브라우저에서 팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해주세요.";
+        } else if (
+            error &&
+            error.code === "auth/unauthorized-domain"
+        ) {
+            message =
+                "현재 사이트 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다.";
+        }
+
+        setAuthMessage(message);
     }
 }
 
@@ -263,17 +287,6 @@ if (logoutButton) {
     );
 }
 
-// Redirect 방식의 Google 로그인 결과 처리.
-// 로그인하지 않은 일반 첫 접속에서는 null이 정상이다.
-getRedirectResult(auth).catch(function (error) {
-    console.error(
-        "Google 로그인 결과 처리 실패",
-        error
-    );
-    setAuthMessage(
-        "Google 로그인 처리 중 문제가 발생했습니다."
-    );
-});
 
 onAuthStateChanged(
     auth,
@@ -299,10 +312,6 @@ onAuthStateChanged(
 
         currentFirebaseUser = user;
 
-        document.body.classList.remove(
-            "auth-locked"
-        );
-
         if (accountUserName) {
             accountUserName.textContent =
                 user.displayName ||
@@ -321,6 +330,11 @@ onAuthStateChanged(
 
             refreshDashboardAfterCloudLoad();
 
+            // 데이터까지 정상적으로 준비된 뒤에 Dashboard를 보여준다.
+            document.body.classList.remove(
+                "auth-locked"
+            );
+
             setAuthMessage("");
         } catch (error) {
             console.error(
@@ -330,9 +344,8 @@ onAuthStateChanged(
 
             cloudSyncReady = false;
 
-            alert(
-                "클라우드 데이터를 불러오지 못했습니다.\n" +
-                "Firebase Firestore 설정과 보안 규칙을 확인해주세요."
+            setAuthMessage(
+                "클라우드 데이터를 불러오지 못했습니다. Firestore 설정과 보안 규칙을 확인해주세요."
             );
         }
     }
