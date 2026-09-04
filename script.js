@@ -635,6 +635,12 @@ async function getTodoAlarmServiceWorker() {
 }
 
 async function registerTodoPushToken() {
+    console.log(
+        "VAPID DEBUG:",
+        TODO_ALARM_VAPID_KEY,
+        TODO_ALARM_VAPID_KEY.length
+    );
+    
     if (!currentFirebaseUser) {
         throw new Error("Google 로그인 후 알림을 설정해주세요.");
     }
