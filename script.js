@@ -7655,19 +7655,222 @@ function enableTouchReorder(listElement, cardSelector, saveOrder) {
 }
 
 // ============================================================
-// 모바일 / iPad 터치 정렬 연결
+// 모바일 / iPad 터치 정렬
 // ============================================================
+
+function enableTouchReorder(
+    listElement,
+    cardSelector,
+    saveOrder
+) {
+    if (!listElement) {
+        return;
+    }
+
+    let draggingCard = null;
+    let startY = 0;
+    let startX = 0;
+    let isDragging = false;
+
+    listElement.addEventListener(
+        "pointerdown",
+        function (event) {
+
+            const handle =
+                event.target.closest(
+                    ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
+                );
+
+            if (!handle) {
+                return;
+            }
+
+            // 터치 / 펜에서만 처리
+            if (
+                event.pointerType !== "touch" &&
+                event.pointerType !== "pen"
+            ) {
+                return;
+            }
+
+            const card =
+                handle.closest(cardSelector);
+
+            if (!card) {
+                return;
+            }
+
+            draggingCard = card;
+
+            startX = event.clientX;
+            startY = event.clientY;
+
+            isDragging = false;
+
+            handle.setPointerCapture(
+                event.pointerId
+            );
+
+        }
+    );
+
+
+    listElement.addEventListener(
+        "pointermove",
+        function (event) {
+
+            if (!draggingCard) {
+                return;
+            }
+
+            const moveX =
+                Math.abs(
+                    event.clientX - startX
+                );
+
+            const moveY =
+                Math.abs(
+                    event.clientY - startY
+                );
+
+
+            // 조금 움직인 것은 단순 터치로 처리
+            if (
+                !isDragging &&
+                Math.max(moveX, moveY) < 8
+            ) {
+                return;
+            }
+
+
+            if (!isDragging) {
+
+                isDragging = true;
+
+                draggingCard.classList.add(
+                    "touch-dragging"
+                );
+
+            }
+
+
+            event.preventDefault();
+
+
+            const target =
+                document.elementFromPoint(
+                    event.clientX,
+                    event.clientY
+                );
+
+            if (!target) {
+                return;
+            }
+
+
+            const targetCard =
+                target.closest(
+                    cardSelector
+                );
+
+
+            if (
+                !targetCard ||
+                targetCard === draggingCard ||
+                !listElement.contains(
+                    targetCard
+                )
+            ) {
+                return;
+            }
+
+
+            const rect =
+                targetCard.getBoundingClientRect();
+
+
+            const middleX =
+                rect.left +
+                rect.width / 2;
+
+
+            if (
+                event.clientX <
+                middleX
+            ) {
+
+                listElement.insertBefore(
+                    draggingCard,
+                    targetCard
+                );
+
+            }
+
+            else {
+
+                listElement.insertBefore(
+                    draggingCard,
+                    targetCard.nextSibling
+                );
+
+            }
+
+        }
+    );
+
+
+    listElement.addEventListener(
+        "pointerup",
+        function () {
+
+            if (!draggingCard) {
+                return;
+            }
+
+
+            if (isDragging) {
+
+                draggingCard.classList.remove(
+                    "touch-dragging"
+                );
+
+                saveOrder();
+
+            }
+
+
+            draggingCard = null;
+            isDragging = false;
+
+        }
+    );
+
+
+    listElement.addEventListener(
+        "pointercancel",
+        function () {
+
+            if (!draggingCard) {
+                return;
+            }
+
+
+            draggingCard.classList.remove(
+                "touch-dragging"
+            );
+
+
+            draggingCard = null;
+            isDragging = false;
+
+        }
+    );
+}
 
 enableTouchReorder(
     memoList,
     ".memo-card",
     saveMemoOrder
-);
-
-enableTouchReorder(
-    ddayList,
-    ".dday-card",
-    saveDDays
 );
 
 enableTouchReorder(

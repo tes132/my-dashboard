@@ -2283,3 +2283,8 @@ button:hover {
 .project-drag-handle {
     touch-action: none;
 }
+.memo-card.touch-dragging,
+.dday-card.touch-dragging,
+.project-item.touch-dragging {
+    opacity: 0.5;
+}
