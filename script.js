@@ -1,4 +1,3 @@
-// ============================================================
 // Firebase / Google 로그인
 // ============================================================
 
@@ -21,6 +20,11 @@ import {
     setDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+import {
+    getMessaging,
+    getToken,
+    onMessage
+} from "https://www.gstatic.com/firebasejs/12.8.0/firebase-messaging.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBF-wTk14lNmZlOKuwrwjZLN3vpVZPyAyM",
@@ -35,6 +39,11 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
+let messaging = null;
+
+// Firebase 콘솔의 Project settings > Cloud Messaging > Web Push certificates에서
+// Web Push 인증서의 공개 키(VAPID public key)를 발급받아 이 값에 넣어주세요.
+const TODO_ALARM_VAPID_KEY = "BHmtqG5VzPik-yvduK5SXku68vQ2v5XykfsHVbXp3RFdk2GMXRCSM7XG-6DR4-eSlHqJS-ou_VTgGUqHKv8iYqs";
 
 // ------------------------------------------------------------
 // 모바일 브라우저 판별
@@ -119,6 +128,12 @@ let cloudHydrating = false;
 let activeSyncPromise = null;
 let activeSyncUid = null;
 
+let todoAlarmSettings = loadFromStorage("todoAlarmSettings", {
+    enabled: false,
+    times: []
+});
+let todoAlarmServiceWorkerRegistration = null;
+
 const CLOUD_KEYS = [
     "categories",
     "projects",
@@ -126,7 +141,8 @@ const CLOUD_KEYS = [
     "schedules",
     "dDays",
     "studyRecords",
-    "dailyStudyGoal"
+    "dailyStudyGoal",
+    "todoAlarmSettings"
 ];
 
 const authScreen = document.getElementById("authScreen");
@@ -455,6 +471,11 @@ function refreshDashboardAfterCloudLoad() {
     studyRecords = loadFromStorage("studyRecords", []);
     dailyStudyGoal =
         Number(localStorage.getItem("dailyStudyGoal")) || 3600;
+    todoAlarmSettings = loadFromStorage("todoAlarmSettings", {
+        enabled: false,
+        times: []
+    });
+    normalizeTodoAlarmSettings();
 
     normalizeData();
 
@@ -473,6 +494,455 @@ function refreshDashboardAfterCloudLoad() {
     showWeeklyStudyChart();
     showDailyStudyGoal();
 }
+
+
+// ============================================================
+// Todo 알림 / Web Push
+// ============================================================
+
+function normalizeTodoAlarmSettings() {
+    if (!todoAlarmSettings || typeof todoAlarmSettings !== "object") {
+        todoAlarmSettings = {
+            enabled: false,
+            times: []
+        };
+    }
+
+    todoAlarmSettings.enabled = todoAlarmSettings.enabled === true;
+
+    if (!Array.isArray(todoAlarmSettings.times)) {
+        todoAlarmSettings.times = [];
+    }
+
+    todoAlarmSettings.times = todoAlarmSettings.times
+        .filter(function (time) {
+            return /^\d{2}:\d{2}$/.test(time);
+        })
+        .filter(function (time, index, array) {
+            return array.indexOf(time) === index;
+        })
+        .sort();
+
+    return todoAlarmSettings;
+}
+
+function saveTodoAlarmSettings() {
+    normalizeTodoAlarmSettings();
+    saveData("todoAlarmSettings", todoAlarmSettings);
+}
+
+function setTodoAlarmStatus(message) {
+    const status = document.getElementById("todoAlarmStatus");
+    if (status) {
+        status.textContent = message || "";
+    }
+}
+
+function createTodoAlarmTimeRow(timeValue) {
+    const row = createElement("div", "todo-alarm-time-row");
+
+    const input = createElement("input");
+    input.type = "time";
+    input.value = timeValue || "";
+    input.className = "todo-alarm-time-input";
+
+    const removeButton = createElement(
+        "button",
+        "todo-alarm-remove-time",
+        "삭제"
+    );
+    removeButton.type = "button";
+
+    removeButton.addEventListener("click", function () {
+        row.remove();
+    });
+
+    row.appendChild(input);
+    row.appendChild(removeButton);
+
+    return row;
+}
+
+function renderTodoAlarmPanel() {
+    normalizeTodoAlarmSettings();
+
+    const panel = document.getElementById("todoAlarmPanel");
+    const enabled = document.getElementById("todoAlarmEnabled");
+    const times = document.getElementById("todoAlarmTimes");
+
+    if (!panel || !enabled || !times) {
+        return;
+    }
+
+    enabled.checked = todoAlarmSettings.enabled;
+    clearElement(times);
+
+    todoAlarmSettings.times.forEach(function (time) {
+        times.appendChild(createTodoAlarmTimeRow(time));
+    });
+
+    if (todoAlarmSettings.times.length === 0) {
+        times.appendChild(createTodoAlarmTimeRow(""));
+    }
+
+    updateTodoAlarmPermissionUI();
+}
+
+function updateTodoAlarmPermissionUI() {
+    const permissionButton = document.getElementById(
+        "todoAlarmPermissionButton"
+    );
+
+    if (!permissionButton) {
+        return;
+    }
+
+    if (!("Notification" in window)) {
+        permissionButton.textContent = "이 브라우저는 알림을 지원하지 않음";
+        permissionButton.disabled = true;
+        return;
+    }
+
+    permissionButton.disabled = false;
+
+    if (Notification.permission === "granted") {
+        permissionButton.textContent = "알림 허용됨";
+        return;
+    }
+
+    if (Notification.permission === "denied") {
+        permissionButton.textContent = "브라우저 설정에서 알림 허용";
+        return;
+    }
+
+    permissionButton.textContent = "알림 허용";
+}
+
+async function getTodoAlarmServiceWorker() {
+    if (!("serviceWorker" in navigator)) {
+        throw new Error("이 브라우저에서는 Service Worker를 사용할 수 없습니다.");
+    }
+
+    if (todoAlarmServiceWorkerRegistration) {
+        return todoAlarmServiceWorkerRegistration;
+    }
+
+    todoAlarmServiceWorkerRegistration = await navigator.serviceWorker.register(
+        "/firebase-messaging-sw.js"
+    );
+
+    return todoAlarmServiceWorkerRegistration;
+}
+
+async function registerTodoPushToken() {
+    if (!currentFirebaseUser) {
+        throw new Error("Google 로그인 후 알림을 설정해주세요.");
+    }
+
+    if (!("Notification" in window)) {
+        throw new Error("이 브라우저는 알림 기능을 지원하지 않습니다.");
+    }
+
+    if (Notification.permission === "denied") {
+        throw new Error(
+            "알림 권한이 차단되어 있습니다. 브라우저 사이트 설정에서 알림을 허용해주세요."
+        );
+    }
+
+    if (Notification.permission !== "granted") {
+        const permission = await Notification.requestPermission();
+
+        if (permission !== "granted") {
+            throw new Error("알림 권한이 허용되지 않았습니다.");
+        }
+    }
+
+    if (
+        !TODO_ALARM_VAPID_KEY ||
+        TODO_ALARM_VAPID_KEY === "YOUR_PUBLIC_VAPID_KEY_HERE"
+    ) {
+        throw new Error(
+            "Firebase Web Push 공개 키(VAPID key)를 코드에 등록해야 합니다."
+        );
+    }
+
+    const registration = await getTodoAlarmServiceWorker();
+
+    if (!messaging) {
+        messaging = getMessaging(firebaseApp);
+    }
+
+    const token = await getToken(messaging, {
+        vapidKey: TODO_ALARM_VAPID_KEY,
+        serviceWorkerRegistration: registration
+    });
+
+    if (!token) {
+        throw new Error("푸시 토큰을 발급받지 못했습니다.");
+    }
+
+    const tokenIdBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(token)
+    );
+
+    const tokenId = Array.from(new Uint8Array(tokenIdBuffer))
+        .map(function (byte) {
+            return byte.toString(16).padStart(2, "0");
+        })
+        .join("");
+
+    await setDoc(
+        doc(
+            db,
+            "users",
+            currentFirebaseUser.uid,
+            "pushTokens",
+            tokenId
+        ),
+        {
+            token: token,
+            platform: isMobileBrowser ? "mobile-web" : "web",
+            userAgent: navigator.userAgent || "",
+            updatedAt: serverTimestamp()
+        },
+        {
+            merge: true
+        }
+    );
+
+    return token;
+}
+
+async function enableTodoPushFromUserAction() {
+    setTodoAlarmStatus("알림 권한을 확인하는 중...");
+
+    try {
+        await registerTodoPushToken();
+        setTodoAlarmStatus("알림을 사용할 준비가 됐습니다.");
+        updateTodoAlarmPermissionUI();
+        return true;
+    } catch (error) {
+        console.error("Todo 푸시 등록 실패:", error);
+        setTodoAlarmStatus(error.message || "알림 등록에 실패했습니다.");
+        return false;
+    }
+}
+
+async function syncTodoPushRegistrationAfterLogin() {
+    normalizeTodoAlarmSettings();
+
+    if (!todoAlarmSettings.enabled) {
+        return;
+    }
+
+    if (
+        !("Notification" in window) ||
+        Notification.permission !== "granted"
+    ) {
+        return;
+    }
+
+    if (
+        !TODO_ALARM_VAPID_KEY ||
+        TODO_ALARM_VAPID_KEY === "YOUR_PUBLIC_VAPID_KEY_HERE"
+    ) {
+        return;
+    }
+
+    try {
+        await registerTodoPushToken();
+    } catch (error) {
+        console.warn("기존 Todo 푸시 토큰 동기화 실패:", error);
+    }
+}
+
+function collectTodoAlarmTimesFromUI() {
+    const inputs = Array.from(
+        document.querySelectorAll(".todo-alarm-time-input")
+    );
+
+    const values = inputs
+        .map(function (input) {
+            return input.value;
+        })
+        .filter(function (value) {
+            return /^\d{2}:\d{2}$/.test(value);
+        })
+        .filter(function (value, index, array) {
+            return array.indexOf(value) === index;
+        })
+        .sort();
+
+    return values;
+}
+
+async function saveTodoAlarmSettingsFromUI() {
+    const enabledInput = document.getElementById("todoAlarmEnabled");
+
+    if (!enabledInput) {
+        return;
+    }
+
+    const nextSettings = {
+        enabled: enabledInput.checked,
+        times: collectTodoAlarmTimesFromUI(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+    };
+
+    if (nextSettings.enabled && nextSettings.times.length === 0) {
+        setTodoAlarmStatus("알림 시간을 하나 이상 정해주세요.");
+        return;
+    }
+
+    todoAlarmSettings = nextSettings;
+    saveTodoAlarmSettings();
+
+    if (nextSettings.enabled) {
+        const registered = await enableTodoPushFromUserAction();
+
+        if (!registered) {
+            todoAlarmSettings.enabled = false;
+            saveTodoAlarmSettings();
+            enabledInput.checked = false;
+            return;
+        }
+    }
+
+    setTodoAlarmStatus(
+        nextSettings.enabled
+            ? "저장됐습니다. 설정한 시간에 오늘 남은 Todo를 알려드립니다."
+            : "Todo 알림을 껐습니다."
+    );
+}
+
+function initTodoAlarmUI() {
+    normalizeTodoAlarmSettings();
+
+    const alarmButton = document.getElementById("todoAlarmButton");
+    const closeButton = document.getElementById("todoAlarmCloseButton");
+    const panel = document.getElementById("todoAlarmPanel");
+    const addTimeButton = document.getElementById(
+        "todoAlarmAddTimeButton"
+    );
+    const permissionButton = document.getElementById(
+        "todoAlarmPermissionButton"
+    );
+    const saveButton = document.getElementById(
+        "todoAlarmSaveButton"
+    );
+
+    if (!panel) {
+        return;
+    }
+
+    renderTodoAlarmPanel();
+
+    if (alarmButton) {
+        alarmButton.addEventListener("click", function () {
+            panel.style.display =
+                panel.style.display === "none"
+                    ? "block"
+                    : "none";
+
+            if (panel.style.display !== "none") {
+                renderTodoAlarmPanel();
+            }
+        });
+    }
+
+    if (closeButton) {
+        closeButton.addEventListener("click", function () {
+            panel.style.display = "none";
+        });
+    }
+
+    if (addTimeButton) {
+        addTimeButton.addEventListener("click", function () {
+            const times = document.getElementById("todoAlarmTimes");
+
+            if (!times) return;
+
+            times.appendChild(createTodoAlarmTimeRow(""));
+        });
+    }
+
+    if (permissionButton) {
+        permissionButton.addEventListener(
+            "click",
+            enableTodoPushFromUserAction
+        );
+    }
+
+    if (saveButton) {
+        saveButton.addEventListener(
+            "click",
+            saveTodoAlarmSettingsFromUI
+        );
+    }
+
+    updateTodoAlarmPermissionUI();
+}
+
+async function initTodoForegroundMessaging() {
+    try {
+        if (!("serviceWorker" in navigator)) {
+            return;
+        }
+
+        if (!("PushManager" in window)) {
+            return;
+        }
+
+        if (!messaging) {
+            messaging = getMessaging(firebaseApp);
+        }
+
+        onMessage(messaging, function (payload) {
+            console.log("Todo 알림 수신:", payload);
+
+            const notification = payload && payload.notification
+                ? payload.notification
+                : {};
+
+            const data = payload && payload.data
+                ? payload.data
+                : {};
+
+            const title =
+                notification.title ||
+                data.title ||
+                "📋 My Dashboard";
+
+            const body =
+                notification.body ||
+                data.body ||
+                "오늘 할 일을 확인해주세요.";
+
+            if (
+                document.visibilityState === "visible" &&
+                "serviceWorker" in navigator
+            ) {
+                navigator.serviceWorker.ready.then(function (registration) {
+                    registration.showNotification(title, {
+                        body: body,
+                        icon: "/icon-192.png",
+                        badge: "/icon-192.png",
+                        tag: data.tag || "todo-alarm",
+                        renotify: true,
+                        data: {
+                            url: "/"
+                        }
+                    });
+                });
+            }
+        });
+    } catch (error) {
+        console.warn("Todo 포그라운드 푸시 초기화 실패:", error);
+    }
+}
+
+
 
 function describeAuthError(error) {
     if (!error) {
@@ -706,6 +1176,8 @@ async function activateSignedInUser(user) {
 
             cloudHydrating = false;
             cloudSyncReady = result.status !== "read-failed" || result.hasCloudData;
+
+            syncTodoPushRegistrationAfterLogin();
 
             if (result.status === "read-failed") {
                 setAuthMessage(
@@ -1460,6 +1932,8 @@ function getCategoryByName(name) {
 // ============================================================
 
 function normalizeData() {
+
+    normalizeTodoAlarmSettings();
 
     // --------------------
     // Categories
@@ -8667,6 +9141,12 @@ showWeeklyStudyChart();
 
 // 하루 목표
 showDailyStudyGoal();
+
+
+// Todo 알림
+initTodoAlarmUI();
+
+initTodoForegroundMessaging();
 
 
 // 24시간 시계

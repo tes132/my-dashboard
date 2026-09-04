@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
 </head>
 
 <body class="auth-locked">
@@ -105,6 +107,43 @@
                         이번 주
                     </button>
 
+                    <button id="todoAlarmButton" class="todo-alarm-button" type="button">
+                        🔔 알림
+                    </button>
+
+                </div>
+
+                <div id="todoAlarmPanel" class="todo-alarm-panel" style="display: none;">
+                    <div class="todo-alarm-panel-header">
+                        <strong>Todo 알림</strong>
+                        <button id="todoAlarmCloseButton" type="button" class="todo-alarm-close-button">×</button>
+                    </div>
+
+                    <label class="todo-alarm-toggle-row">
+                        <span>남은 Todo 알림</span>
+                        <input type="checkbox" id="todoAlarmEnabled">
+                    </label>
+
+                    <p class="todo-alarm-description">
+                        설정한 시간마다 오늘 남은 Todo 개수를 알려줍니다.
+                    </p>
+
+                    <div id="todoAlarmTimes" class="todo-alarm-times"></div>
+
+                    <button id="todoAlarmAddTimeButton" type="button" class="todo-alarm-add-button">
+                        + 알림 시간 추가
+                    </button>
+
+                    <div class="todo-alarm-actions">
+                        <button id="todoAlarmPermissionButton" type="button" class="todo-alarm-permission-button">
+                            알림 허용
+                        </button>
+                        <button id="todoAlarmSaveButton" type="button" class="todo-alarm-save-button">
+                            저장
+                        </button>
+                    </div>
+
+                    <p id="todoAlarmStatus" class="todo-alarm-status"></p>
                 </div>
 
 
