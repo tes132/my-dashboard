@@ -6,8 +6,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebas
 import {
     getAuth,
     GoogleAuthProvider,
+    getRedirectResult,
     onAuthStateChanged,
     signInWithPopup,
+    signInWithRedirect,
     signOut
 } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import {
@@ -156,17 +158,36 @@ async function uploadAllLocalData() {
 }
 
 async function loadCloudDataOrMigrate() {
+    const results = await Promise.race([
+        Promise.all(
+            CLOUD_KEYS.map(async function (key) {
+                return {
+                    key: key,
+                    result: await getCloudData(key)
+                };
+            })
+        ),
+        new Promise(function (_, reject) {
+            setTimeout(function () {
+                reject(
+                    new Error(
+                        "Firestore 전체 데이터 읽기 시간 초과"
+                    )
+                );
+            }, 10000);
+        })
+    ]);
+
     let hasAnyCloudData = false;
     const cloudValues = {};
 
-    for (const key of CLOUD_KEYS) {
-        const result = await getCloudData(key);
-
-        if (result.exists) {
+    results.forEach(function (item) {
+        if (item.result.exists) {
             hasAnyCloudData = true;
-            cloudValues[key] = result.value;
+            cloudValues[item.key] =
+                item.result.value;
         }
-    }
+    });
 
     if (hasAnyCloudData) {
         for (const key of CLOUD_KEYS) {
@@ -183,9 +204,14 @@ async function loadCloudDataOrMigrate() {
             }
         }
     } else {
-        // 첫 로그인 기기라면 기존 LocalStorage 데이터를
-        // 클라우드로 한 번 올린다.
-        await uploadAllLocalData();
+        // 첫 로그인 기기: 기존 LocalStorage를 클라우드에 업로드.
+        // Dashboard 진입을 기다리게 하지 않도록 백그라운드에서 처리한다.
+        uploadAllLocalData().catch(function (error) {
+            console.error(
+                "첫 데이터 업로드 실패:",
+                error
+            );
+        });
     }
 }
 
@@ -221,7 +247,9 @@ function refreshDashboardAfterCloudLoad() {
 
 async function handleGoogleLogin() {
     if (!googleLoginButton) {
-        console.error("googleLoginButton을 찾을 수 없습니다.");
+        console.error(
+            "googleLoginButton을 찾을 수 없습니다."
+        );
         return;
     }
 
@@ -229,21 +257,72 @@ async function handleGoogleLogin() {
     setAuthMessage("Google 로그인 중...");
 
     try {
-        const result = await signInWithPopup(
-            auth,
-            googleProvider
-        );
+        // 우선 PC와 모바일 모두 popup을 시도한다.
+        // 모바일 브라우저가 popup을 지원하지 않거나 차단하면
+        // 아래 fallback에서 redirect로 전환한다.
+        const popupPromise =
+            signInWithPopup(
+                auth,
+                googleProvider
+            );
 
-        console.log(
-            "Google 로그인 성공:",
-            result.user.email
-        );
+        const result = await Promise.race([
+            popupPromise,
+            new Promise(function (_, reject) {
+                setTimeout(function () {
+                    reject({
+                        code: "auth/popup-timeout"
+                    });
+                }, 8000);
+            })
+        ]);
 
-        setAuthMessage(
-            "로그인 완료. Dashboard를 불러오는 중..."
-        );
+        if (result && result.user) {
+            console.log(
+                "Google 로그인 성공:",
+                result.user.email
+            );
+
+            setAuthMessage(
+                "로그인 완료. Dashboard를 불러오는 중..."
+            );
+        }
     } catch (error) {
-        console.error("Google 로그인 오류:", error);
+        console.error(
+            "Google 로그인 오류:",
+            error
+        );
+
+        // popup이 차단되었거나 모바일 브라우저에서
+        // popup 방식이 제대로 동작하지 않는 경우 redirect fallback.
+        if (
+            error &&
+            (
+                error.code === "auth/popup-blocked" ||
+                error.code ===
+                    "auth/popup-operation-not-supported" ||
+                error.code === "auth/popup-timeout"
+            )
+        ) {
+            try {
+                setAuthMessage(
+                    "브라우저 방식에 맞춰 Google 로그인으로 이동합니다..."
+                );
+
+                await signInWithRedirect(
+                    auth,
+                    googleProvider
+                );
+
+                return;
+            } catch (redirectError) {
+                console.error(
+                    "Google redirect 로그인 오류:",
+                    redirectError
+                );
+                error = redirectError;
+            }
+        }
 
         googleLoginButton.disabled = false;
 
@@ -254,13 +333,8 @@ async function handleGoogleLogin() {
             error &&
             error.code === "auth/popup-closed-by-user"
         ) {
-            message = "Google 로그인 창이 닫혔습니다.";
-        } else if (
-            error &&
-            error.code === "auth/popup-blocked"
-        ) {
             message =
-                "브라우저에서 팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해주세요.";
+                "Google 로그인 창이 닫혔습니다.";
         } else if (
             error &&
             error.code === "auth/unauthorized-domain"
@@ -273,12 +347,6 @@ async function handleGoogleLogin() {
         ) {
             message =
                 "Firebase에서 Google 로그인이 활성화되어 있지 않습니다.";
-        } else if (
-            error &&
-            error.code === "auth/popup-operation-not-supported"
-        ) {
-            message =
-                "현재 브라우저가 Google 팝업 로그인을 지원하지 않습니다.";
         } else if (error && error.message) {
             message =
                 "Google 로그인 오류: " +
@@ -289,22 +357,34 @@ async function handleGoogleLogin() {
     }
 }
 
-
-
-if (logoutButton) {
-    logoutButton.addEventListener(
-        "click",
-        handleLogout
-    );
-}
-
-
 if (googleLoginButton) {
     googleLoginButton.addEventListener(
         "click",
         handleGoogleLogin
     );
 }
+
+getRedirectResult(auth).catch(function (error) {
+    console.error(
+        "Google redirect 로그인 결과 처리 실패:",
+        error
+    );
+
+    if (
+        error &&
+        error.code === "auth/unauthorized-domain"
+    ) {
+        setAuthMessage(
+            "현재 사이트 주소가 Firebase 승인된 도메인에 등록되어 있지 않습니다."
+        );
+    } else if (error && error.message) {
+        setAuthMessage(
+            "Google 로그인 오류: " +
+            error.message
+        );
+    }
+});
+
 
 onAuthStateChanged(
     auth,
@@ -337,33 +417,40 @@ onAuthStateChanged(
                 "Google 사용자";
         }
 
-        setAuthMessage(
-            "데이터를 불러오는 중..."
+        // 인증 자체가 성공하면 Dashboard는 바로 열어준다.
+        // Firestore가 느리거나 일시적으로 실패해도
+        // 로그인 화면에 갇히지 않도록 한다.
+        document.body.classList.remove(
+            "auth-locked"
         );
+
+        setAuthMessage(
+            "데이터를 동기화하는 중..."
+        );
+
+        // 기존 LocalStorage 데이터를 먼저 화면에 표시한다.
+        refreshDashboardAfterCloudLoad();
 
         try {
             await loadCloudDataOrMigrate();
 
             cloudSyncReady = true;
 
+            // 클라우드 데이터가 있으면 다시 렌더링한다.
             refreshDashboardAfterCloudLoad();
-
-            // 데이터까지 정상적으로 준비된 뒤에 Dashboard를 보여준다.
-            document.body.classList.remove(
-                "auth-locked"
-            );
 
             setAuthMessage("");
         } catch (error) {
             console.error(
-                "Firebase 데이터 불러오기 실패",
+                "Firebase 데이터 불러오기 실패:",
                 error
             );
 
             cloudSyncReady = false;
 
+            // Firebase가 실패해도 로컬 데이터로 Dashboard는 계속 사용 가능.
             setAuthMessage(
-                "클라우드 데이터를 불러오지 못했습니다. Firestore 설정과 보안 규칙을 확인해주세요."
+                "클라우드 동기화에 실패했습니다. 현재 기기의 데이터로 계속 사용합니다."
             );
         }
     }
