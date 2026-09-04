@@ -2221,3 +2221,7 @@ button:hover {
         gap: 10px;
     }
 }
+
+#stopwatchSection .stopwatch-container > h2 {
+    text-align: left;
+}
