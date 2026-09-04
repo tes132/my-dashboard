@@ -2292,15 +2292,20 @@ button:hover {
 /* 모바일 터치 드래그 미리보기 */
 .touch-drag-preview {
     position: fixed;
-    z-index: 9999;
+    z-index: 99999;
     pointer-events: none;
-    opacity: 0.85;
+    opacity: 0.9;
     transform: rotate(2deg) scale(1.02);
+    box-sizing: border-box;
+    background: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .touch-drag-placeholder {
     border: 2px dashed #999;
     border-radius: 12px;
     box-sizing: border-box;
-    opacity: 0.6;
+    opacity: 0.65;
+    background: #f7f7f7;
+    flex: 0 0 auto;
 }

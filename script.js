@@ -5102,6 +5102,8 @@ function showDDays() {
                     "dday-card"
                 );
 
+            card._dday = dday;
+
 
             // ====================
             // 드래그 핸들
@@ -7503,311 +7505,270 @@ setInterval(
 // ============================================================
 
 function enableTouchReorder(listElement, cardSelector, saveOrder) {
-
-    if (!listElement) {
-        return;
-    }
-
-    let touchCard = null;
-    let touchStartY = 0;
-
-    listElement.addEventListener(
-        "touchstart",
-        function (event) {
-
-            const handle =
-                event.target.closest(
-                    ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
-                );
-
-            if (!handle) {
-                return;
-            }
-
-            touchCard =
-                handle.closest(cardSelector);
-
-            if (!touchCard) {
-                return;
-            }
-
-            touchStartY =
-                event.touches[0].clientY;
-
-            touchCard.classList.add(
-                "touch-dragging"
-            );
-
-        },
-        {
-            passive: true
-        }
-    );
-
-
-    listElement.addEventListener(
-        "touchmove",
-        function (event) {
-
-            if (!touchCard) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const touch =
-                event.touches[0];
-
-            const target =
-                document.elementFromPoint(
-                    touch.clientX,
-                    touch.clientY
-                );
-
-            if (!target) {
-                return;
-            }
-
-            const targetCard =
-                target.closest(cardSelector);
-
-            if (
-                !targetCard ||
-                targetCard === touchCard ||
-                !listElement.contains(targetCard)
-            ) {
-                return;
-            }
-
-            const rect =
-                targetCard.getBoundingClientRect();
-
-            const middleY =
-                rect.top +
-                rect.height / 2;
-
-
-            if (
-                touch.clientY <
-                middleY
-            ) {
-
-                listElement.insertBefore(
-                    touchCard,
-                    targetCard
-                );
-
-            } else {
-
-                listElement.insertBefore(
-                    touchCard,
-                    targetCard.nextSibling
-                );
-
-            }
-
-        },
-        {
-            passive: false
-        }
-    );
-
-
-    listElement.addEventListener(
-        "touchend",
-        function () {
-
-            if (!touchCard) {
-                return;
-            }
-
-            touchCard.classList.remove(
-                "touch-dragging"
-            );
-
-            saveOrder();
-
-            touchCard =
-                null;
-
-        }
-    );
-
-
-    listElement.addEventListener(
-        "touchcancel",
-        function () {
-
-            if (!touchCard) {
-                return;
-            }
-
-            touchCard.classList.remove(
-                "touch-dragging"
-            );
-
-            touchCard =
-                null;
-
-        }
-    );
-
-}
-
-// ============================================================
-// 모바일 / iPad 터치 정렬
-// ============================================================
-
-function enableTouchReorder(listElement, cardSelector, saveOrder) {
     if (!listElement) return;
 
     let touchCard = null;
     let placeholder = null;
     let preview = null;
+    let dragging = false;
 
-    listElement.addEventListener("touchstart", function (event) {
-        const handle = event.target.closest(
-            ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
-        );
+    function removePreview() {
+        if (preview) {
+            preview.remove();
+            preview = null;
+        }
+    }
 
-        if (!handle) return;
+    function cleanup() {
+        removePreview();
 
-        touchCard = handle.closest(cardSelector);
-        if (!touchCard) return;
+        if (placeholder) {
+            placeholder.remove();
+            placeholder = null;
+        }
 
-        const touch = event.touches[0];
+        if (touchCard) {
+            touchCard.style.display = "";
+            touchCard.classList.remove("touch-dragging");
+        }
+
+        touchCard = null;
+        dragging = false;
+    }
+
+    function createPreview(touch) {
         const rect = touchCard.getBoundingClientRect();
 
-        /* 미리보기 카드 */
         preview = touchCard.cloneNode(true);
+        preview.classList.remove("touch-dragging", "dragging");
         preview.classList.add("touch-drag-preview");
 
-        preview.style.width = rect.width + "px";
-        preview.style.height = rect.height + "px";
-        preview.style.left = (touch.clientX - rect.width / 2) + "px";
-        preview.style.top = (touch.clientY - 25) + "px";
+        preview.style.width = `${rect.width}px`;
+        preview.style.height = `${rect.height}px`;
+        preview.style.left = `${touch.clientX - rect.width / 2}px`;
+        preview.style.top = `${touch.clientY - 28}px`;
 
         document.body.appendChild(preview);
+    }
 
-        /* 실제 들어갈 자리 */
+    function createPlaceholder() {
+        const rect = touchCard.getBoundingClientRect();
+
         placeholder = document.createElement("div");
         placeholder.className = "touch-drag-placeholder";
-        placeholder.style.width = rect.width + "px";
-        placeholder.style.height = rect.height + "px";
+        placeholder.style.width = `${rect.width}px`;
+        placeholder.style.height = `${rect.height}px`;
 
         touchCard.style.display = "none";
-        listElement.insertBefore(placeholder, touchCard);
 
-    }, { passive: true });
-
-
-    listElement.addEventListener("touchmove", function (event) {
-        if (!touchCard || !placeholder) return;
-
-        event.preventDefault();
-
-        const touch = event.touches[0];
-
-        /* 미리보기 카드가 손가락을 따라감 */
-        if (preview) {
-            preview.style.left =
-                (touch.clientX - preview.offsetWidth / 2) + "px";
-
-            preview.style.top =
-                (touch.clientY - 25) + "px";
-        }
-
-        const target = document.elementFromPoint(
-            touch.clientX,
-            touch.clientY
+        listElement.insertBefore(
+            placeholder,
+            touchCard
         );
+    }
 
-        if (!target) return;
+    function getClosestCard(x, y) {
+        const cards = Array.from(
+            listElement.querySelectorAll(cardSelector)
+        ).filter(function (card) {
+            return (
+                card !== touchCard &&
+                card !== placeholder &&
+                card.style.display !== "none"
+            );
+        });
 
-        const targetCard = target.closest(cardSelector);
+        let closest = null;
+        let closestDistance = Infinity;
 
-        if (
-            !targetCard ||
-            targetCard === touchCard ||
-            !listElement.contains(targetCard)
-        ) {
-            return;
-        }
+        cards.forEach(function (card) {
+            const rect = card.getBoundingClientRect();
+
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distance = dx * dx + dy * dy;
+
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = card;
+            }
+        });
+
+        return closest;
+    }
+
+    function updatePlaceholder(x, y) {
+        const targetCard = getClosestCard(x, y);
+
+        if (!targetCard) return;
 
         const rect = targetCard.getBoundingClientRect();
-        const middle = rect.top + rect.height / 2;
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
-        if (touch.clientY < middle) {
-            listElement.insertBefore(
-                placeholder,
-                targetCard
-            );
+        let insertBefore;
+
+        /*
+         * 세로 목록에서는 Y축,
+         * 메모처럼 가로/그리드에서는 X축을 우선 사용한다.
+         */
+        const verticalDistance = Math.abs(y - centerY);
+        const horizontalDistance = Math.abs(x - centerX);
+
+        if (verticalDistance > horizontalDistance) {
+            insertBefore = y < centerY;
         } else {
-            listElement.insertBefore(
-                placeholder,
-                targetCard.nextSibling
-            );
+            insertBefore = x < centerX;
         }
 
-    }, { passive: false });
-
-
-    listElement.addEventListener("touchend", function () {
-        if (!touchCard) return;
-
-        /* 미리보기 제거 */
-        if (preview) {
-            preview.remove();
-            preview = null;
+        if (insertBefore) {
+            if (placeholder.nextElementSibling !== targetCard) {
+                listElement.insertBefore(placeholder, targetCard);
+            }
+        } else {
+            if (targetCard.nextElementSibling !== placeholder) {
+                listElement.insertBefore(
+                    placeholder,
+                    targetCard.nextSibling
+                );
+            }
         }
+    }
 
-        /* 원본 카드를 미리보기 위치에 넣음 */
-        if (placeholder) {
-            listElement.insertBefore(
-                touchCard,
-                placeholder
-            );
+    listElement.addEventListener(
+        "touchstart",
+        function (event) {
+            if (touchCard) return;
 
-            placeholder.remove();
-            placeholder = null;
-        }
-
-        touchCard.style.display = "";
-        saveOrder();
-        touchCard = null;
-
-    });
-
-
-    listElement.addEventListener("touchcancel", function () {
-        if (!touchCard) return;
-
-        if (preview) {
-            preview.remove();
-            preview = null;
-        }
-
-        if (placeholder) {
-            listElement.insertBefore(
-                touchCard,
-                placeholder
+            const handle = event.target.closest(
+                ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
             );
 
-            placeholder.remove();
-            placeholder = null;
-        }
+            if (!handle) return;
 
-        touchCard.style.display = "";
-        touchCard = null;
-    });
+            touchCard = handle.closest(cardSelector);
+
+            if (!touchCard) return;
+
+            const touch = event.touches[0];
+
+            dragging = true;
+            touchCard.classList.add("touch-dragging");
+
+            createPlaceholder();
+            createPreview(touch);
+        },
+        { passive: true }
+    );
+
+    listElement.addEventListener(
+        "touchmove",
+        function (event) {
+            if (!touchCard || !dragging) return;
+
+            event.preventDefault();
+
+            const touch = event.touches[0];
+
+            if (preview) {
+                preview.style.left =
+                    `${touch.clientX - preview.offsetWidth / 2}px`;
+                preview.style.top =
+                    `${touch.clientY - 28}px`;
+            }
+
+            updatePlaceholder(
+                touch.clientX,
+                touch.clientY
+            );
+        },
+        { passive: false }
+    );
+
+    listElement.addEventListener(
+        "touchend",
+        function () {
+            if (!touchCard) return;
+
+            removePreview();
+
+            if (placeholder) {
+                listElement.insertBefore(
+                    touchCard,
+                    placeholder
+                );
+
+                placeholder.remove();
+                placeholder = null;
+            }
+
+            touchCard.style.display = "";
+            touchCard.classList.remove("touch-dragging");
+
+            saveOrder();
+
+            touchCard = null;
+            dragging = false;
+        }
+    );
+
+    listElement.addEventListener(
+        "touchcancel",
+        function () {
+            if (!touchCard) return;
+            cleanup();
+        }
+    );
 }
 
+
+// Memo
 enableTouchReorder(
     memoList,
     ".memo-card",
     saveMemoOrder
 );
 
+
+// D-Day
+enableTouchReorder(
+    ddayList,
+    ".dday-card",
+    function () {
+        const cards = Array.from(
+            ddayList.querySelectorAll(".dday-card")
+        );
+
+        const newDDays = [];
+
+        cards.forEach(function (card) {
+            if (card._dday) {
+                newDDays.push(card._dday);
+                return;
+            }
+
+            const titleElement = card.querySelector("h3");
+            if (!titleElement) return;
+
+            const found = dDays.find(function (item) {
+                return item.title === titleElement.textContent;
+            });
+
+            if (found) newDDays.push(found);
+        });
+
+        if (newDDays.length === dDays.length) {
+            dDays = newDDays;
+            saveDDays();
+        }
+    }
+);
+
+
+// Project
 enableTouchReorder(
     projectList,
     ".project-item",
@@ -7888,3 +7849,5 @@ setInterval(
 // ============================================================
 // END
 // ============================================================
+
+
