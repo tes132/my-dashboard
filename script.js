@@ -7675,54 +7675,7 @@ function saveCurrentStudyRecord() {
 }
 
 
-// ------------------------------------------------------------
-// 스톱워치 집중 모드
-// ------------------------------------------------------------
-// 다른 탭/앱으로 이동하면 페이지가 숨겨지는지 감지해서
-// 실행 중인 스톱워치를 자동 일시정지한다.
-// 대시보드로 돌아온 뒤에는 "재개" 버튼으로 이어서 측정한다.
-let stopwatchPausedByVisibility = false;
-
-function pauseStopwatchForLeavingPage() {
-    if (!stopwatchRunning) {
-        return;
-    }
-
-    clearInterval(stopwatchInterval);
-    stopwatchInterval = null;
-    stopwatchRunning = false;
-    stopwatchPausedByVisibility = true;
-
-    if (stopwatchStartButton) {
-        stopwatchStartButton.textContent = "재개";
-    }
-}
-
 function startStopwatch() {
-
-    // 다른 탭/앱으로 나갔다가 돌아온 뒤의 재개
-    if (stopwatchPausedByVisibility) {
-        stopwatchPausedByVisibility = false;
-        stopwatchRunning = true;
-
-        if (stopwatchCategory) {
-            stopwatchCategory.disabled = true;
-        }
-
-        if (stopwatchStartButton) {
-            stopwatchStartButton.textContent = "정지";
-        }
-
-        stopwatchInterval = setInterval(
-            function () {
-                stopwatchSeconds++;
-                updateStopwatchDisplay();
-            },
-            1000
-        );
-
-        return;
-    }
 
     if (
         stopwatchRunning
@@ -7732,12 +7685,10 @@ function startStopwatch() {
             stopwatchInterval
         );
 
-        stopwatchInterval = null;
 
         stopwatchRunning =
             false;
 
-        stopwatchPausedByVisibility = false;
 
         saveCurrentStudyRecord();
 
@@ -7775,8 +7726,6 @@ function startStopwatch() {
     stopwatchCurrentCategory =
         stopwatchCategory.value;
 
-    stopwatchPausedByVisibility = false;
-
 
     stopwatchRunning =
         true;
@@ -7809,9 +7758,6 @@ function resetStopwatch() {
     clearInterval(
         stopwatchInterval
     );
-
-    stopwatchInterval = null;
-    stopwatchPausedByVisibility = false;
 
 
     stopwatchSeconds =
@@ -7846,32 +7792,6 @@ function resetStopwatch() {
 
     updateStopwatchDisplay();
 }
-
-
-// ============================================================
-// 스톱워치 집중 모드: 다른 탭/앱으로 나가면 자동 일시정지
-// ============================================================
-document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden") {
-        pauseStopwatchForLeavingPage();
-        return;
-    }
-
-    // 다시 대시보드로 돌아오면 자동 재개하지 않는다.
-    // 시간이 저절로 계속 흐르지 않도록 "재개" 상태를 유지한다.
-    if (
-        document.visibilityState === "visible" &&
-        stopwatchPausedByVisibility &&
-        stopwatchStartButton
-    ) {
-        stopwatchStartButton.textContent = "재개";
-    }
-});
-
-// 다른 창으로 포커스가 이동한 경우를 보완한다.
-window.addEventListener("blur", function () {
-    pauseStopwatchForLeavingPage();
-});
 
 
 if (stopwatchCategory) {
