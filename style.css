@@ -2297,3 +2297,10 @@ button:hover {
     opacity: 0.85;
     transform: rotate(2deg) scale(1.02);
 }
+
+.touch-drag-placeholder {
+    border: 2px dashed #999;
+    border-radius: 12px;
+    box-sizing: border-box;
+    opacity: 0.6;
+}

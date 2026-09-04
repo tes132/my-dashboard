@@ -7659,231 +7659,147 @@ function enableTouchReorder(listElement, cardSelector, saveOrder) {
 // ============================================================
 
 function enableTouchReorder(listElement, cardSelector, saveOrder) {
-
-    if (!listElement) {
-        return;
-    }
+    if (!listElement) return;
 
     let touchCard = null;
-    let touchPreview = null;
+    let placeholder = null;
+    let preview = null;
 
-    listElement.addEventListener(
-        "touchstart",
-        function (event) {
+    listElement.addEventListener("touchstart", function (event) {
+        const handle = event.target.closest(
+            ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
+        );
 
-            const handle =
-                event.target.closest(
-                    ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
-                );
+        if (!handle) return;
 
-            if (!handle) {
-                return;
-            }
+        touchCard = handle.closest(cardSelector);
+        if (!touchCard) return;
 
-            touchCard =
-                handle.closest(cardSelector);
+        const touch = event.touches[0];
+        const rect = touchCard.getBoundingClientRect();
 
-            if (!touchCard) {
-                return;
-            }
+        /* 미리보기 카드 */
+        preview = touchCard.cloneNode(true);
+        preview.classList.add("touch-drag-preview");
 
-            const touch =
-                event.touches[0];
+        preview.style.width = rect.width + "px";
+        preview.style.height = rect.height + "px";
+        preview.style.left = (touch.clientX - rect.width / 2) + "px";
+        preview.style.top = (touch.clientY - 25) + "px";
 
-            /* =========================
-               모바일 드래그 미리보기 생성
-            ========================= */
+        document.body.appendChild(preview);
 
-            touchPreview =
-                touchCard.cloneNode(true);
+        /* 실제 들어갈 자리 */
+        placeholder = document.createElement("div");
+        placeholder.className = "touch-drag-placeholder";
+        placeholder.style.width = rect.width + "px";
+        placeholder.style.height = rect.height + "px";
 
-            touchPreview.classList.remove(
-                "touch-dragging"
-            );
+        touchCard.style.display = "none";
+        listElement.insertBefore(placeholder, touchCard);
 
-            touchPreview.classList.add(
-                "touch-drag-preview"
-            );
+    }, { passive: true });
 
-            const rect =
-                touchCard.getBoundingClientRect();
 
-            touchPreview.style.width =
-                rect.width + "px";
+    listElement.addEventListener("touchmove", function (event) {
+        if (!touchCard || !placeholder) return;
 
-            touchPreview.style.height =
-                rect.height + "px";
+        event.preventDefault();
 
-            touchPreview.style.left =
-                (touch.clientX - rect.width / 2) + "px";
+        const touch = event.touches[0];
 
-            touchPreview.style.top =
-                (touch.clientY - 20) + "px";
+        /* 미리보기 카드가 손가락을 따라감 */
+        if (preview) {
+            preview.style.left =
+                (touch.clientX - preview.offsetWidth / 2) + "px";
 
-            document.body.appendChild(
-                touchPreview
-            );
-
-            touchCard.classList.add(
-                "touch-dragging"
-            );
-
-        },
-        {
-            passive: true
+            preview.style.top =
+                (touch.clientY - 25) + "px";
         }
-    );
 
+        const target = document.elementFromPoint(
+            touch.clientX,
+            touch.clientY
+        );
 
-    listElement.addEventListener(
-        "touchmove",
-        function (event) {
+        if (!target) return;
 
-            if (!touchCard) {
-                return;
-            }
+        const targetCard = target.closest(cardSelector);
 
-            event.preventDefault();
-
-            const touch =
-                event.touches[0];
-
-
-            /* =========================
-               미리보기 위치 이동
-            ========================= */
-
-            if (touchPreview) {
-
-                const rect =
-                    touchCard.getBoundingClientRect();
-
-                touchPreview.style.left =
-                    (touch.clientX - rect.width / 2) + "px";
-
-                touchPreview.style.top =
-                    (touch.clientY - 20) + "px";
-            }
-
-
-            /* =========================
-               실제 삽입 위치 계산
-            ========================= */
-
-            const target =
-                document.elementFromPoint(
-                    touch.clientX,
-                    touch.clientY
-                );
-
-            if (!target) {
-                return;
-            }
-
-            const targetCard =
-                target.closest(cardSelector);
-
-            if (
-                !targetCard ||
-                targetCard === touchCard ||
-                !listElement.contains(targetCard)
-            ) {
-                return;
-            }
-
-            const rect =
-                targetCard.getBoundingClientRect();
-
-            const middleY =
-                rect.top +
-                rect.height / 2;
-
-
-            if (
-                touch.clientY <
-                middleY
-            ) {
-
-                listElement.insertBefore(
-                    touchCard,
-                    targetCard
-                );
-
-            } else {
-
-                listElement.insertBefore(
-                    touchCard,
-                    targetCard.nextSibling
-                );
-
-            }
-
-        },
-        {
-            passive: false
+        if (
+            !targetCard ||
+            targetCard === touchCard ||
+            !listElement.contains(targetCard)
+        ) {
+            return;
         }
-    );
+
+        const rect = targetCard.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+
+        if (touch.clientY < middle) {
+            listElement.insertBefore(
+                placeholder,
+                targetCard
+            );
+        } else {
+            listElement.insertBefore(
+                placeholder,
+                targetCard.nextSibling
+            );
+        }
+
+    }, { passive: false });
 
 
-    listElement.addEventListener(
-        "touchend",
-        function () {
+    listElement.addEventListener("touchend", function () {
+        if (!touchCard) return;
 
-            if (!touchCard) {
-                return;
-            }
+        /* 미리보기 제거 */
+        if (preview) {
+            preview.remove();
+            preview = null;
+        }
 
-            touchCard.classList.remove(
-                "touch-dragging"
+        /* 원본 카드를 미리보기 위치에 넣음 */
+        if (placeholder) {
+            listElement.insertBefore(
+                touchCard,
+                placeholder
             );
 
-
-            if (touchPreview) {
-
-                touchPreview.remove();
-
-                touchPreview =
-                    null;
-            }
-
-
-            saveOrder();
-
-            touchCard =
-                null;
-
+            placeholder.remove();
+            placeholder = null;
         }
-    );
+
+        touchCard.style.display = "";
+        saveOrder();
+        touchCard = null;
+
+    });
 
 
-    listElement.addEventListener(
-        "touchcancel",
-        function () {
+    listElement.addEventListener("touchcancel", function () {
+        if (!touchCard) return;
 
-            if (!touchCard) {
-                return;
-            }
+        if (preview) {
+            preview.remove();
+            preview = null;
+        }
 
-            touchCard.classList.remove(
-                "touch-dragging"
+        if (placeholder) {
+            listElement.insertBefore(
+                touchCard,
+                placeholder
             );
 
-
-            if (touchPreview) {
-
-                touchPreview.remove();
-
-                touchPreview =
-                    null;
-            }
-
-
-            touchCard =
-                null;
-
+            placeholder.remove();
+            placeholder = null;
         }
-    );
 
+        touchCard.style.display = "";
+        touchCard = null;
+    });
 }
 
 enableTouchReorder(
