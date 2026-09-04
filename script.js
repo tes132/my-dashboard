@@ -3640,6 +3640,31 @@ memoFontSize.addEventListener(
     }
 );
 
+// ====================
+// 글자색
+// ====================
+
+memoTextColor.addEventListener(
+    "mousedown",
+    function () {
+
+        saveMemoSelection();
+
+    }
+);
+
+
+memoTextColor.addEventListener(
+    "change",
+    function () {
+
+        applyMemoStyle(
+            "color",
+            memoTextColor.value
+        );
+
+    }
+);
 
 // ====================
 // 배경색
@@ -7473,6 +7498,161 @@ setInterval(
     1000
 );
 
+// ============================================================
+// 모바일 / iPad 터치 정렬
+// ============================================================
+
+function enableTouchReorder(listElement, cardSelector, saveOrder) {
+
+    if (!listElement) {
+        return;
+    }
+
+    let touchCard = null;
+    let touchStartY = 0;
+
+    listElement.addEventListener(
+        "touchstart",
+        function (event) {
+
+            const handle =
+                event.target.closest(
+                    ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
+                );
+
+            if (!handle) {
+                return;
+            }
+
+            touchCard =
+                handle.closest(cardSelector);
+
+            if (!touchCard) {
+                return;
+            }
+
+            touchStartY =
+                event.touches[0].clientY;
+
+            touchCard.classList.add(
+                "touch-dragging"
+            );
+
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    listElement.addEventListener(
+        "touchmove",
+        function (event) {
+
+            if (!touchCard) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const touch =
+                event.touches[0];
+
+            const target =
+                document.elementFromPoint(
+                    touch.clientX,
+                    touch.clientY
+                );
+
+            if (!target) {
+                return;
+            }
+
+            const targetCard =
+                target.closest(cardSelector);
+
+            if (
+                !targetCard ||
+                targetCard === touchCard ||
+                !listElement.contains(targetCard)
+            ) {
+                return;
+            }
+
+            const rect =
+                targetCard.getBoundingClientRect();
+
+            const middleY =
+                rect.top +
+                rect.height / 2;
+
+
+            if (
+                touch.clientY <
+                middleY
+            ) {
+
+                listElement.insertBefore(
+                    touchCard,
+                    targetCard
+                );
+
+            } else {
+
+                listElement.insertBefore(
+                    touchCard,
+                    targetCard.nextSibling
+                );
+
+            }
+
+        },
+        {
+            passive: false
+        }
+    );
+
+
+    listElement.addEventListener(
+        "touchend",
+        function () {
+
+            if (!touchCard) {
+                return;
+            }
+
+            touchCard.classList.remove(
+                "touch-dragging"
+            );
+
+            saveOrder();
+
+            touchCard =
+                null;
+
+        }
+    );
+
+
+    listElement.addEventListener(
+        "touchcancel",
+        function () {
+
+            if (!touchCard) {
+                return;
+            }
+
+            touchCard.classList.remove(
+                "touch-dragging"
+            );
+
+            touchCard =
+                null;
+
+        }
+    );
+
+}
 
 // ============================================================
 // 39. 초기화
