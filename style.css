@@ -1996,6 +1996,56 @@ button:hover {
     border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
+/* ============================================================
+   스톱워치 중앙 정렬 / 확대
+   ============================================================ */
+
+#stopwatchSection .stopwatch-container {
+    text-align: center;
+}
+
+#stopwatchSection .stopwatch-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+#stopwatchSection #stopwatchDisplay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 120px;
+    margin: 10px auto 28px auto;
+    box-sizing: border-box;
+    font-size: 64px;
+    font-weight: bold;
+    line-height: 1;
+    letter-spacing: 2px;
+    text-align: center;
+}
+
+#stopwatchSection .stopwatch-category-wrap {
+    width: min(650px, 100%);
+    margin: 0 auto 24px auto;
+    text-align: left;
+}
+
+#stopwatchSection .stopwatch-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto 35px auto;
+}
+
+#stopwatchSection .stopwatch-buttons button {
+    min-width: 90px;
+}
+
+#stopwatchSection #studyRecordSection {
+    text-align: left;
+}
+
 
 /* ============================================================
    통계 카테고리 + 도넛
