@@ -2005,7 +2005,7 @@ button:hover {
 }
 
 #stopwatchSection .stopwatch-container h2 {
-    text-align: center;
+    text-align: left;
     margin-bottom: 25px;
 }
 
@@ -2270,8 +2270,4 @@ button:hover {
         flex-direction: column;
         gap: 10px;
     }
-}
-
-#stopwatchSection .stopwatch-container > h2 {
-    text-align: left;
 }
