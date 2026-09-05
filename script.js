@@ -1,6 +1,3 @@
-// Firebase / Google 로그인
-// ============================================================
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
 import {
     getAuth,
@@ -4991,11 +4988,339 @@ memoTextColor.addEventListener(
 // 배경색
 // ====================
 
+// 색상 선택창을 여는 동안 브라우저가 focus/selection을 바꿔도
+// 선택한 텍스트 위치를 안정적으로 복원하기 위해 문자 위치를 함께 저장한다.
+let memoSavedBackgroundSelection =
+    null;
+
+
+function saveMemoBackgroundSelection() {
+
+    const selection =
+        window.getSelection();
+
+
+    if (
+        !selection ||
+        selection.rangeCount === 0
+    ) {
+
+        return;
+
+    }
+
+
+    const range =
+        selection.getRangeAt(0);
+
+
+    // 시작점과 끝점이 모두 메모 안에 있을 때만 저장
+    if (
+        !memoContent.contains(
+            range.startContainer
+        ) ||
+        !memoContent.contains(
+            range.endContainer
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const startRange =
+        document.createRange();
+
+
+    startRange.selectNodeContents(
+        memoContent
+    );
+
+    startRange.setEnd(
+        range.startContainer,
+        range.startOffset
+    );
+
+
+    const endRange =
+        document.createRange();
+
+
+    endRange.selectNodeContents(
+        memoContent
+    );
+
+    endRange.setEnd(
+        range.endContainer,
+        range.endOffset
+    );
+
+
+    memoSavedBackgroundSelection = {
+        start: startRange.toString().length,
+        end: endRange.toString().length
+    };
+
+}
+
+
+function restoreMemoBackgroundSelection() {
+
+    if (
+        memoSavedBackgroundSelection === null
+    ) {
+
+        return false;
+
+    }
+
+
+    const startOffset =
+        memoSavedBackgroundSelection.start;
+
+    const endOffset =
+        memoSavedBackgroundSelection.end;
+
+
+    const walker =
+        document.createTreeWalker(
+            memoContent,
+            NodeFilter.SHOW_TEXT
+        );
+
+
+    let currentOffset =
+        0;
+
+    let startContainer =
+        null;
+
+    let startNodeOffset =
+        0;
+
+    let endContainer =
+        null;
+
+    let endNodeOffset =
+        0;
+
+
+    let node;
+
+
+    while (
+        (node = walker.nextNode())
+    ) {
+
+        const nodeLength =
+            node.textContent.length;
+
+
+        if (
+            startContainer === null &&
+            startOffset >= currentOffset &&
+            startOffset <= currentOffset + nodeLength
+        ) {
+
+            startContainer =
+                node;
+
+            startNodeOffset =
+                startOffset - currentOffset;
+
+        }
+
+
+        if (
+            endContainer === null &&
+            endOffset >= currentOffset &&
+            endOffset <= currentOffset + nodeLength
+        ) {
+
+            endContainer =
+                node;
+
+            endNodeOffset =
+                endOffset - currentOffset;
+
+        }
+
+
+        currentOffset +=
+            nodeLength;
+
+    }
+
+
+    const range =
+        document.createRange();
+
+
+    // 내용이 없거나 경계가 정확히 마지막에 걸린 경우도 처리
+    if (
+        startContainer === null
+    ) {
+
+        startContainer =
+            memoContent;
+
+        startNodeOffset =
+            memoContent.childNodes.length;
+
+    }
+
+
+    if (
+        endContainer === null
+    ) {
+
+        endContainer =
+            memoContent;
+
+        endNodeOffset =
+            memoContent.childNodes.length;
+
+    }
+
+
+    try {
+
+        range.setStart(
+            startContainer,
+            startNodeOffset
+        );
+
+        range.setEnd(
+            endContainer,
+            endNodeOffset
+        );
+
+    } catch (error) {
+
+        return false;
+
+    }
+
+
+    const selection =
+        window.getSelection();
+
+
+    selection.removeAllRanges();
+
+    selection.addRange(range);
+
+
+    return true;
+
+}
+
+
+function applyMemoBackgroundColor() {
+
+    if (
+        !memoBackgroundColor ||
+        !memoContent
+    ) {
+
+        return;
+
+    }
+
+
+    memoContent.focus();
+
+
+    if (
+        !restoreMemoBackgroundSelection()
+    ) {
+
+        // 문자 위치 복원이 실패하면 기존 Range 복원을 한 번 더 시도
+        restoreMemoSelection();
+    }
+
+
+    const selection =
+        window.getSelection();
+
+
+    if (
+        !selection ||
+        selection.rangeCount === 0
+    ) {
+
+        return;
+
+    }
+
+
+    const range =
+        selection.getRangeAt(0);
+
+
+    if (
+        !memoContent.contains(
+            range.commonAncestorContainer
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    // hiliteColor를 우선 사용하고, 브라우저에서 실패하면 backColor로 재시도
+    const applied =
+        document.execCommand(
+            "hiliteColor",
+            false,
+            memoBackgroundColor.value
+        );
+
+
+    if (!applied) {
+
+        document.execCommand(
+            "backColor",
+            false,
+            memoBackgroundColor.value
+        );
+
+    }
+
+
+    saveMemoSelection();
+    saveMemoBackgroundSelection();
+
+}
+
+
+// 색상 선택창이 열리기 직전에 선택 영역을 저장한다.
 memoBackgroundColor.addEventListener(
-    "mousedown",
+    "pointerdown",
     function () {
 
         saveMemoSelection();
+        saveMemoBackgroundSelection();
+
+    }
+);
+
+
+// 일반적인 색상 변경과 스포이드 변경 모두 처리한다.
+let memoBackgroundInputHandled =
+    false;
+
+
+memoBackgroundColor.addEventListener(
+    "input",
+    function () {
+
+        memoBackgroundInputHandled =
+            true;
+
+        applyMemoBackgroundColor();
 
     }
 );
@@ -5005,19 +5330,18 @@ memoBackgroundColor.addEventListener(
     "change",
     function () {
 
-        memoContent.focus();
+        // input 이벤트가 먼저 발생한 브라우저에서는 중복 적용하지 않는다.
+        if (memoBackgroundInputHandled) {
 
-        restoreMemoSelection();
+            memoBackgroundInputHandled =
+                false;
+
+            return;
+
+        }
 
 
-        document.execCommand(
-            "hiliteColor",
-            false,
-            memoBackgroundColor.value
-        );
-
-
-        saveMemoSelection();
+        applyMemoBackgroundColor();
 
     }
 );
