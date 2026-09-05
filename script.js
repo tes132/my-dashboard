@@ -60,29 +60,43 @@ const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(
 // ------------------------------------------------------------
 // PC: 기존 local persistence 유지
 // 모바일: 삼성 인터넷 등에서 local persistence가 불안정한 경우를
-// 피하기 위해 session -> memory 순서로 안전하게 내려간다.
+// 피하기 위해 local -> session -> memory 순서로 안전하게 내려간다.
 const authPersistenceReady = (async function () {
     if (isMobileBrowser) {
         try {
-            await setPersistence(auth, browserSessionPersistence);
-            console.log("모바일 인증: session persistence 사용");
+            // 1단계: local persistence 시도
+            await setPersistence(auth, browserLocalPersistence);
+            console.log("모바일 인증: local persistence 사용");
             return true;
-        } catch (sessionError) {
+        } catch (localError) {
             console.warn(
-                "모바일 session persistence 실패. memory persistence로 전환합니다.",
-                sessionError
+                "모바일 local persistence 실패. session persistence로 전환합니다.",
+                localError
             );
 
             try {
-                await setPersistence(auth, inMemoryPersistence);
-                console.log("모바일 인증: memory persistence 사용");
+                // 2단계: session persistence 시도
+                await setPersistence(auth, browserSessionPersistence);
+                console.log("모바일 인증: session persistence 사용");
                 return true;
-            } catch (memoryError) {
-                console.error(
-                    "모바일 Firebase persistence 설정 실패:",
-                    memoryError
+            } catch (sessionError) {
+                console.warn(
+                    "모바일 session persistence도 실패. memory persistence로 전환합니다.",
+                    sessionError
                 );
-                return false;
+
+                try {
+                    // 3단계: memory persistence 시도
+                    await setPersistence(auth, inMemoryPersistence);
+                    console.log("모바일 인증: memory persistence 사용");
+                    return true;
+                } catch (memoryError) {
+                    console.error(
+                        "모바일 Firebase persistence 설정 실패:",
+                        memoryError
+                    );
+                    return false;
+                }
             }
         }
     }
