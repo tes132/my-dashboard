@@ -7011,16 +7011,20 @@ function showProjects() {
             });
 
             checkbox.addEventListener("change", function () {
-                // 프로젝트 목록을 다시 그려도 사용자가 보고 있던
-                // 화면 위치가 위로 튀지 않도록 현재 스크롤을 기억한다.
-                const scrollX = window.scrollX;
-                const scrollY = window.scrollY;
-
                 task.completed = checkbox.checked;
                 saveProjects();
-                showProjects();
 
-                restoreWindowScrollPosition(scrollX, scrollY);
+                // 프로젝트 전체를 다시 렌더링하지 않는다.
+                // 기존 DOM을 그대로 유지하면서 진행률만 갱신해
+                // 체크할 때 스크롤 위치가 맨 위로 튀는 현상을 막는다.
+                const nextProgress = getProjectProgress(project);
+                const progressPercent = progressInfo.querySelectorAll("span")[1];
+
+                if (progressPercent) {
+                    progressPercent.textContent = `${nextProgress}%`;
+                }
+
+                progressFill.style.width = `${nextProgress}%`;
             });
 
             label.appendChild(checkbox);
@@ -8736,23 +8740,66 @@ const sections = [
 
 // 화면 전환이나 목록 재렌더링으로 브라우저의
 // 스크롤 앵커링이 작동해도 원래 위치를 최대한 유지한다.
+// ============================================================
+// 탭 전환 시 페이지 높이 / 스크롤 위치 안정화
+// ============================================================
+//
+// D-Day / 통계처럼 다른 탭보다 내용 높이가 크게 달라지는 화면을
+// 오갈 때는 단순히 scrollY를 복원하는 것만으로는 부족하다.
+// 짧은 화면으로 전환하는 순간 브라우저가 최대 스크롤 위치를
+// 강제로 줄이기 때문에, 다시 긴 화면으로 돌아와도 원래 위치가
+// 사라질 수 있다.
+//
+// 한 번 확보된 최대 페이지 높이를 body의 최소 높이로 유지해서
+// 탭마다 페이지 높이가 갑자기 줄어들지 않도록 한다.
+// ============================================================
+
+let dashboardMaxPageHeight = 0;
+
+function stabilizeDashboardPageHeight() {
+    const currentHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body ? document.body.scrollHeight : 0
+    );
+
+    dashboardMaxPageHeight = Math.max(
+        dashboardMaxPageHeight,
+        currentHeight
+    );
+
+    if (document.body) {
+        document.body.style.minHeight =
+            `${dashboardMaxPageHeight}px`;
+    }
+
+    document.documentElement.style.minHeight =
+        `${dashboardMaxPageHeight}px`;
+}
+
 function restoreWindowScrollPosition(
     scrollX,
     scrollY
 ) {
+    stabilizeDashboardPageHeight();
+
     const restore = function () {
-        window.scrollTo(
-            scrollX,
-            scrollY
-        );
+        window.scrollTo({
+            left: scrollX,
+            top: scrollY,
+            behavior: "auto"
+        });
     };
 
-    // DOM 높이가 바뀌는 순간과 브라우저의 레이아웃 반영 이후를
-    // 각각 한 번씩 확인해서 화면이 튀는 현상을 막는다.
+    // 탭 전환으로 display 상태와 레이아웃이 바뀐 뒤에도
+    // 브라우저의 자동 스크롤 보정에 밀리지 않도록 여러 단계에서 복원한다.
+    restore();
+
     requestAnimationFrame(function () {
+        stabilizeDashboardPageHeight();
         restore();
 
         requestAnimationFrame(function () {
+            stabilizeDashboardPageHeight();
             restore();
         });
     });
@@ -8829,8 +8876,11 @@ TAB_ACTIONS.forEach(([tab, section, render]) => {
     if (!tab || !section) return;
 
     tab.addEventListener("click", () => {
-        // D-Day / 통계처럼 높이가 다른 화면을 오갈 때도
-        // 탭 전환 전의 브라우저 스크롤 위치를 유지한다.
+        // 먼저 현재 화면의 페이지 높이를 확보한다.
+        // 이후 더 짧은 탭으로 전환해도 브라우저가
+        // scrollY를 강제로 줄이지 않도록 한다.
+        stabilizeDashboardPageHeight();
+
         const scrollX = window.scrollX;
         const scrollY = window.scrollY;
 
@@ -9209,6 +9259,10 @@ showWeeklyStudyChart();
 
 // 하루 목표
 showDailyStudyGoal();
+
+
+// 초기 화면의 페이지 높이를 기준으로 탭 전환용 최소 높이를 확보한다.
+stabilizeDashboardPageHeight();
 
 
 // Todo 알림
