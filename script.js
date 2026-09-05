@@ -7011,9 +7011,16 @@ function showProjects() {
             });
 
             checkbox.addEventListener("change", function () {
+                // 프로젝트 목록을 다시 그려도 사용자가 보고 있던
+                // 화면 위치가 위로 튀지 않도록 현재 스크롤을 기억한다.
+                const scrollX = window.scrollX;
+                const scrollY = window.scrollY;
+
                 task.completed = checkbox.checked;
                 saveProjects();
                 showProjects();
+
+                restoreWindowScrollPosition(scrollX, scrollY);
             });
 
             label.appendChild(checkbox);
@@ -7115,8 +7122,18 @@ function editProject(
     projectEditor.style.display =
         "block";
 
+    // 수정창은 기존처럼 프로젝트 목록 아래에 두되,
+    // 수정 버튼을 누르면 해당 위치까지 부드럽게 이동한다.
+    requestAnimationFrame(function () {
+        projectEditor.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    });
 
-    projectTitle.focus();
+    projectTitle.focus({
+        preventScroll: true
+    });
 }
 
 
@@ -8717,6 +8734,31 @@ const sections = [
 // 화면 표시
 // ====================
 
+// 화면 전환이나 목록 재렌더링으로 브라우저의
+// 스크롤 앵커링이 작동해도 원래 위치를 최대한 유지한다.
+function restoreWindowScrollPosition(
+    scrollX,
+    scrollY
+) {
+    const restore = function () {
+        window.scrollTo(
+            scrollX,
+            scrollY
+        );
+    };
+
+    // DOM 높이가 바뀌는 순간과 브라우저의 레이아웃 반영 이후를
+    // 각각 한 번씩 확인해서 화면이 튀는 현상을 막는다.
+    requestAnimationFrame(function () {
+        restore();
+
+        requestAnimationFrame(function () {
+            restore();
+        });
+    });
+}
+
+
 function showSection(
     section,
     selectedButton
@@ -8785,9 +8827,20 @@ const TAB_ACTIONS = [
 
 TAB_ACTIONS.forEach(([tab, section, render]) => {
     if (!tab || !section) return;
+
     tab.addEventListener("click", () => {
+        // D-Day / 통계처럼 높이가 다른 화면을 오갈 때도
+        // 탭 전환 전의 브라우저 스크롤 위치를 유지한다.
+        const scrollX = window.scrollX;
+        const scrollY = window.scrollY;
+
         showSection(section, tab);
         render();
+
+        restoreWindowScrollPosition(
+            scrollX,
+            scrollY
+        );
     });
 });
 
