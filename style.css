@@ -1,6 +1,11 @@
 /* My Dashboard - refactored CSS
 */
 
+html {
+    overflow-y: scroll;
+    overflow-anchor: none;
+}
+
 body {
     font-family: Arial, sans-serif;
     max-width: 1100px;

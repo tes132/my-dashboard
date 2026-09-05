@@ -7008,6 +7008,19 @@ function showProjects() {
 
             checkbox.addEventListener("click", function (event) {
                 event.stopPropagation();
+
+                // 체크박스 포커스로 브라우저가 페이지 스크롤을 바꾸더라도
+                // 클릭 직전의 화면 위치를 그대로 유지한다.
+                const scrollX = window.scrollX;
+                const scrollY = window.scrollY;
+
+                requestAnimationFrame(function () {
+                    window.scrollTo({
+                        left: scrollX,
+                        top: scrollY,
+                        behavior: "auto"
+                    });
+                });
             });
 
             checkbox.addEventListener("change", function () {
@@ -8801,6 +8814,11 @@ function restoreWindowScrollPosition(
         requestAnimationFrame(function () {
             stabilizeDashboardPageHeight();
             restore();
+
+            requestAnimationFrame(function () {
+                stabilizeDashboardPageHeight();
+                restore();
+            });
         });
     });
 }
@@ -9288,3 +9306,5 @@ setInterval(
 // ============================================================
 // END
 // ============================================================
+
+
