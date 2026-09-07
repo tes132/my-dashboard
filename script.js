@@ -6322,10 +6322,11 @@ function editSchedule(
 
     // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
     // 수정창 위치까지 부드럽게 이동한다.
+    // 일정 수정창은 내용이 길어 전체가 보이도록 조금 더 아래로 이동한다.
     requestAnimationFrame(function () {
         scheduleEditor.scrollIntoView({
             behavior: "smooth",
-            block: "center"
+            block: "start"
         });
     });
 
