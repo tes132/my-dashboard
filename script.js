@@ -1122,7 +1122,33 @@ async function runUserSyncWithTimeout(user, timeoutMs) {
 async function activateSignedInUser(user) {
     if (!user) return;
 
-    // 이미 같은 계정이 활성화된 경우에는 화면만 보장한다.
+    // 로그인한 사용자의 부모 문서를 항상 보장한다.
+    // merge:true이므로 기존 데이터는 유지된다.
+    try {
+        await setDoc(
+            doc(db, "users", user.uid),
+            {
+                uid: user.uid,
+                updatedAt: serverTimestamp()
+            },
+            {
+                merge: true
+            }
+        );
+
+        console.log(
+            "사용자 부모 문서 생성/갱신 성공:",
+            user.uid
+        );
+    } catch (error) {
+        console.error(
+            "사용자 부모 문서 생성 실패:",
+            error
+        );
+    }
+
+    // 이미 같은 계정이 활성화된 경우에는
+    // 위의 부모 문서 보장만 하고 화면 상태를 유지한다.
     if (
         currentFirebaseUser &&
         currentFirebaseUser.uid === user.uid &&
@@ -1133,9 +1159,9 @@ async function activateSignedInUser(user) {
         return;
     }
 
-    // 같은 인증 이벤트가 두 번 들어와도 동기화를 중복 실행하지 않는다.
+    // 같은 인증 이벤트가 두 번 들어와도
+    // 동기화를 중복 실행하지 않는다.
     if (activeSyncPromise && activeSyncUid === user.uid) {
-        // 모바일에서는 이미 화면을 열어 둔 뒤 백그라운드에서 동기화한다.
         unlockDashboard();
         return;
     }
