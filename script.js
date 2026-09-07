@@ -1144,6 +1144,17 @@ async function activateSignedInUser(user) {
     cloudSyncReady = false;
     cloudHydrating = true;
 
+    await setDoc(
+        doc(db, "users", user.uid),
+        {
+            uid: user.uid,
+            updatedAt: serverTimestamp()
+        },
+        {
+            merge: true
+        }
+    );
+
     const operationId = ++authOperationId;
     activeSyncUid = user.uid;
 
@@ -1742,7 +1753,7 @@ function setScheduleRepeatDays(days) {
 
     scheduleRepeatDays.style.display =
         scheduleRepeat &&
-        scheduleRepeat.value === "weekly"
+            scheduleRepeat.value === "weekly"
             ? "flex"
             : "none";
 
@@ -1789,7 +1800,7 @@ function initializeScheduleRepeatDays(
 
     const selectedDays =
         Array.isArray(days) &&
-        days.length > 0
+            days.length > 0
             ? days.map(Number).filter(function (day) {
                 return day >= 0 && day <= 6;
             })
@@ -5892,7 +5903,7 @@ function isScheduleForDate(
             Array.isArray(
                 schedule.repeatDays
             ) &&
-            schedule.repeatDays.length > 0
+                schedule.repeatDays.length > 0
                 ? schedule.repeatDays.map(Number)
                 : [
                     scheduleDate.getDay()
