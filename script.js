@@ -4650,7 +4650,18 @@ function editMemo(memo) {
         "block";
 
 
-    memoTitle.focus();
+    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
+    // 수정창 위치까지 부드럽게 이동한다.
+    requestAnimationFrame(function () {
+        memoEditor.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    });
+
+    memoTitle.focus({
+        preventScroll: true
+    });
 }
 
 
@@ -6309,7 +6320,18 @@ function editSchedule(
         "block";
 
 
-    scheduleTitle.focus();
+    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
+    // 수정창 위치까지 부드럽게 이동한다.
+    requestAnimationFrame(function () {
+        scheduleEditor.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    });
+
+    scheduleTitle.focus({
+        preventScroll: true
+    });
 }
 
 
@@ -7322,7 +7344,18 @@ function editDday(dday) {
         "block";
 
 
-    ddayTitle.focus();
+    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
+    // 수정창 위치까지 부드럽게 이동한다.
+    requestAnimationFrame(function () {
+        ddayEditor.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    });
+
+    ddayTitle.focus({
+        preventScroll: true
+    });
 
 }
 
