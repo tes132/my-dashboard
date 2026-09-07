@@ -9509,10 +9509,11 @@ TAB_ACTIONS.forEach(([tab, section, render]) => {
         showSection(section, tab);
         render();
 
-        restoreWindowScrollPosition(
-            scrollX,
-            scrollY
-        );
+        window.scrollTo({
+            left: 0,
+            top: 0,
+            behavior: "auto"
+        });
     });
 });
 
