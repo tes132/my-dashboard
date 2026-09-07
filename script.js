@@ -1144,16 +1144,28 @@ async function activateSignedInUser(user) {
     cloudSyncReady = false;
     cloudHydrating = true;
 
-    await setDoc(
-        doc(db, "users", user.uid),
-        {
-            uid: user.uid,
-            updatedAt: serverTimestamp()
-        },
-        {
-            merge: true
-        }
-    );
+    try {
+        await setDoc(
+            doc(db, "users", user.uid),
+            {
+                uid: user.uid,
+                updatedAt: serverTimestamp()
+            },
+            {
+                merge: true
+            }
+        );
+
+        console.log(
+            "사용자 부모 문서 생성/갱신 성공:",
+            user.uid
+        );
+    } catch (error) {
+        console.error(
+            "사용자 부모 문서 생성 실패:",
+            error
+        );
+    }
 
     const operationId = ++authOperationId;
     activeSyncUid = user.uid;
