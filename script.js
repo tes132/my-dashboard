@@ -4650,18 +4650,7 @@ function editMemo(memo) {
         "block";
 
 
-    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
-    // 수정창 위치까지 부드럽게 이동한다.
-    requestAnimationFrame(function () {
-        memoEditor.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-    });
-
-    memoTitle.focus({
-        preventScroll: true
-    });
+    memoTitle.focus();
 }
 
 
@@ -6320,19 +6309,7 @@ function editSchedule(
         "block";
 
 
-    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
-    // 수정창 위치까지 부드럽게 이동한다.
-    // 일정 수정창은 내용이 길어 전체가 보이도록 조금 더 아래로 이동한다.
-    requestAnimationFrame(function () {
-        scheduleEditor.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    });
-
-    scheduleTitle.focus({
-        preventScroll: true
-    });
+    scheduleTitle.focus();
 }
 
 
@@ -7345,18 +7322,7 @@ function editDday(dday) {
         "block";
 
 
-    // 프로젝트 수정창과 동일하게 수정 버튼을 누르면
-    // 수정창 위치까지 부드럽게 이동한다.
-    requestAnimationFrame(function () {
-        ddayEditor.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-    });
-
-    ddayTitle.focus({
-        preventScroll: true
-    });
+    ddayTitle.focus();
 
 }
 
@@ -9509,6 +9475,8 @@ TAB_ACTIONS.forEach(([tab, section, render]) => {
         showSection(section, tab);
         render();
 
+        // 아래 메뉴로 화면을 전환할 때는 항상 화면 맨 위에서 시작한다.
+        // 기존 수정창의 부드러운 스크롤 기능은 그대로 유지한다.
         window.scrollTo({
             left: 0,
             top: 0,
