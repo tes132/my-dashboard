@@ -1690,6 +1690,9 @@ const scheduleDescription =
 const scheduleRepeat =
     getElement("scheduleRepeat");
 
+const scheduleRepeatDays =
+    getElement("scheduleRepeatDays");
+
 const newScheduleButton =
     getElement("newScheduleButton");
 
@@ -1710,6 +1713,142 @@ const clockNumbers =
 
 const clockTicks =
     getElement("clockTicks");
+
+
+function getScheduleWeekdayFromDate(dateString) {
+    if (!dateString) {
+        return new Date().getDay();
+    }
+
+    return new Date(
+        dateString +
+        "T00:00:00"
+    ).getDay();
+}
+
+
+function setScheduleRepeatDays(days) {
+
+    if (!scheduleRepeatDays) {
+        return;
+    }
+
+    const selectedDays =
+        Array.isArray(days)
+            ? days.map(Number).filter(function (day) {
+                return day >= 0 && day <= 6;
+            })
+            : [];
+
+    scheduleRepeatDays.style.display =
+        scheduleRepeat &&
+        scheduleRepeat.value === "weekly"
+            ? "flex"
+            : "none";
+
+    const buttons =
+        scheduleRepeatDays.querySelectorAll(
+            ".schedule-repeat-day"
+        );
+
+    buttons.forEach(function (button) {
+        const day = Number(
+            button.dataset.day
+        );
+
+        button.classList.toggle(
+            "active",
+            selectedDays.includes(day)
+        );
+    });
+}
+
+
+function getSelectedScheduleRepeatDays() {
+
+    if (!scheduleRepeatDays) {
+        return [];
+    }
+
+    return Array.from(
+        scheduleRepeatDays.querySelectorAll(
+            ".schedule-repeat-day.active"
+        )
+    ).map(function (button) {
+        return Number(
+            button.dataset.day
+        );
+    });
+}
+
+
+function initializeScheduleRepeatDays(
+    days,
+    fallbackDate
+) {
+
+    const selectedDays =
+        Array.isArray(days) &&
+        days.length > 0
+            ? days.map(Number).filter(function (day) {
+                return day >= 0 && day <= 6;
+            })
+            : [
+                getScheduleWeekdayFromDate(
+                    fallbackDate
+                )
+            ];
+
+    setScheduleRepeatDays(
+        selectedDays
+    );
+}
+
+
+if (scheduleRepeat) {
+    scheduleRepeat.addEventListener(
+        "change",
+        function () {
+            if (scheduleRepeat.value === "weekly") {
+                const currentDays =
+                    getSelectedScheduleRepeatDays();
+
+                setScheduleRepeatDays(
+                    currentDays.length > 0
+                        ? currentDays
+                        : [
+                            getScheduleWeekdayFromDate(
+                                editingSchedule
+                                    ? editingSchedule.date
+                                    : selectedDate
+                            )
+                        ]
+                );
+                return;
+            }
+
+            setScheduleRepeatDays([]);
+        }
+    );
+}
+
+
+if (scheduleRepeatDays) {
+    scheduleRepeatDays
+        .querySelectorAll(
+            ".schedule-repeat-day"
+        )
+        .forEach(function (button) {
+            button.addEventListener(
+                "click",
+                function () {
+                    button.classList.toggle(
+                        "active"
+                    );
+                }
+            );
+        });
+}
 
 
 // --------------------
@@ -2144,6 +2283,30 @@ function normalizeData() {
                 schedule.repeat =
                     "none";
             }
+
+
+            if (
+                !Array.isArray(
+                    schedule.repeatDays
+                )
+            ) {
+                schedule.repeatDays =
+                    schedule.repeat === "weekly"
+                        ? [
+                            getScheduleWeekdayFromDate(
+                                schedule.date
+                            )
+                        ]
+                        : [];
+            }
+
+
+            schedule.repeatDays =
+                schedule.repeatDays
+                    .map(Number)
+                    .filter(function (day) {
+                        return day >= 0 && day <= 6;
+                    });
 
 
             if (!Array.isArray(
@@ -5725,8 +5888,18 @@ function isScheduleForDate(
             );
 
 
-        return (
-            scheduleDate.getDay() ===
+        const repeatDays =
+            Array.isArray(
+                schedule.repeatDays
+            ) &&
+            schedule.repeatDays.length > 0
+                ? schedule.repeatDays.map(Number)
+                : [
+                    scheduleDate.getDay()
+                ];
+
+
+        return repeatDays.includes(
             target.getDay()
         );
 
@@ -5957,6 +6130,15 @@ function openNewScheduleEditor() {
         scheduleDescription.value = "";
     }
 
+    if (scheduleRepeat) {
+        scheduleRepeat.value = "none";
+    }
+
+    initializeScheduleRepeatDays(
+        [],
+        selectedDate
+    );
+
 
     showScheduleTodoSelector();
 
@@ -6060,6 +6242,16 @@ function editSchedule(
     scheduleDescription.value =
         schedule.description || "";
 
+    if (scheduleRepeat) {
+        scheduleRepeat.value =
+            schedule.repeat || "none";
+    }
+
+    initializeScheduleRepeatDays(
+        schedule.repeatDays,
+        schedule.date
+    );
+
 
     showScheduleTodoSelector();
 
@@ -6145,6 +6337,11 @@ if (saveScheduleButton) {
 
                 repeat:
                     scheduleRepeat.value,
+
+                repeatDays:
+                    scheduleRepeat.value === "weekly"
+                        ? getSelectedScheduleRepeatDays()
+                        : [],
 
                 todoIds:
                     [...selectedScheduleTodoIds]

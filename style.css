@@ -872,6 +872,33 @@ button:hover {
     font-size: 14px;
 }
 
+.schedule-repeat-days {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.schedule-repeat-day {
+    flex: 1 1 0;
+    padding: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    color: #555;
+    font-size: 13px;
+}
+
+.schedule-repeat-day:hover {
+    background-color: #f5f5f5;
+}
+
+.schedule-repeat-day.active {
+    background-color: #f3f3f3;
+    border-color: #999;
+    font-weight: bold;
+    color: #222;
+}
+
 .dday-header {
     display: flex;
     align-items: center;
@@ -2589,6 +2616,9 @@ body:not(.auth-locked) #accountBar {
         max-width: 140px;
     }
 }
+
+
+
 
 
 
