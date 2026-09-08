@@ -61,9 +61,10 @@ const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(
 const authPersistenceReady = (async function () {
     if (isMobileBrowser) {
         try {
-            // 1단계: local persistence 시도
-            await setPersistence(auth, browserLocalPersistence);
-            console.log("모바일 인증: local persistence 사용");
+            await setPersistence(
+                auth,
+                browserLocalPersistence
+            );
             return true;
         } catch (localError) {
             console.warn(
@@ -72,9 +73,10 @@ const authPersistenceReady = (async function () {
             );
 
             try {
-                // 2단계: session persistence 시도
-                await setPersistence(auth, browserSessionPersistence);
-                console.log("모바일 인증: session persistence 사용");
+                await setPersistence(
+                    auth,
+                    browserSessionPersistence
+                );
                 return true;
             } catch (sessionError) {
                 console.warn(
@@ -83,9 +85,10 @@ const authPersistenceReady = (async function () {
                 );
 
                 try {
-                    // 3단계: memory persistence 시도
-                    await setPersistence(auth, inMemoryPersistence);
-                    console.log("모바일 인증: memory persistence 사용");
+                    await setPersistence(
+                        auth,
+                        inMemoryPersistence
+                    );
                     return true;
                 } catch (memoryError) {
                     console.error(
@@ -99,8 +102,10 @@ const authPersistenceReady = (async function () {
     }
 
     try {
-        await setPersistence(auth, browserLocalPersistence);
-        console.log("PC 인증: local persistence 사용");
+        await setPersistence(
+            auth,
+            browserLocalPersistence
+        );
         return true;
     } catch (localError) {
         console.warn(
@@ -109,7 +114,10 @@ const authPersistenceReady = (async function () {
         );
 
         try {
-            await setPersistence(auth, browserSessionPersistence);
+            await setPersistence(
+                auth,
+                browserSessionPersistence
+            );
             return true;
         } catch (sessionError) {
             console.warn(
@@ -118,7 +126,10 @@ const authPersistenceReady = (async function () {
             );
 
             try {
-                await setPersistence(auth, inMemoryPersistence);
+                await setPersistence(
+                    auth,
+                    inMemoryPersistence
+                );
                 return true;
             } catch (memoryError) {
                 console.error(
@@ -1135,11 +1146,6 @@ async function activateSignedInUser(user) {
                 merge: true
             }
         );
-
-        console.log(
-            "사용자 부모 문서 생성/갱신 성공:",
-            user.uid
-        );
     } catch (error) {
         console.error(
             "사용자 부모 문서 생성 실패:",
@@ -1161,7 +1167,10 @@ async function activateSignedInUser(user) {
 
     // 같은 인증 이벤트가 두 번 들어와도
     // 동기화를 중복 실행하지 않는다.
-    if (activeSyncPromise && activeSyncUid === user.uid) {
+    if (
+        activeSyncPromise &&
+        activeSyncUid === user.uid
+    ) {
         unlockDashboard();
         return;
     }
@@ -1169,29 +1178,6 @@ async function activateSignedInUser(user) {
     currentFirebaseUser = user;
     cloudSyncReady = false;
     cloudHydrating = true;
-
-    try {
-        await setDoc(
-            doc(db, "users", user.uid),
-            {
-                uid: user.uid,
-                updatedAt: serverTimestamp()
-            },
-            {
-                merge: true
-            }
-        );
-
-        console.log(
-            "사용자 부모 문서 생성/갱신 성공:",
-            user.uid
-        );
-    } catch (error) {
-        console.error(
-            "사용자 부모 문서 생성 실패:",
-            error
-        );
-    }
 
     const operationId = ++authOperationId;
     activeSyncUid = user.uid;
