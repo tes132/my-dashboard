@@ -53,7 +53,7 @@ self.addEventListener("notificationclick", function (event) {
     event.notification.data &&
     event.notification.data.url
       ? event.notification.data.url
-      : "/";
+      : "https://tes132.github.io/my-dashboard/";
 
   event.waitUntil(
     clients.matchAll({
