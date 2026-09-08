@@ -40,7 +40,7 @@ messaging.onBackgroundMessage(function (payload) {
     tag: data.tag || "todo-alarm",
     renotify: true,
     data: {
-      url: data.url || "/"
+      url: data.url || "https://tes132.github.io/my-dashboard/"
     }
   });
 });

@@ -943,7 +943,7 @@ async function initTodoForegroundMessaging() {
                         tag: data.tag || "todo-alarm",
                         renotify: true,
                         data: {
-                            url: "/"
+                            url: "https://tes132.github.io/my-dashboard/"
                         }
                     });
                 });
