@@ -40,7 +40,7 @@ messaging.onBackgroundMessage(function (payload) {
     tag: data.tag || "todo-alarm",
     renotify: true,
     data: {
-      url: data.url || "https://tes132.github.io/my-dashboard/"
+      url: "https://tes132.github.io/my-dashboard/"
     }
   });
 });
@@ -48,12 +48,7 @@ messaging.onBackgroundMessage(function (payload) {
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
 
-  const targetUrl =
-    event.notification &&
-    event.notification.data &&
-    event.notification.data.url
-      ? event.notification.data.url
-      : "https://tes132.github.io/my-dashboard/";
+  const targetUrl = "https://tes132.github.io/my-dashboard/";
 
   event.waitUntil(
     clients.matchAll({
