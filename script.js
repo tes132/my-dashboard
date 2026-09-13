@@ -509,7 +509,7 @@ function refreshDashboardAfterCloudLoad() {
     showProjects();
 
     loadStopwatchCategories();
-    updateStopwatchDisplay();
+    restoreStopwatchState();
     showStudyRecords();
 
     showStudyStats();
@@ -8107,6 +8107,9 @@ let stopwatchRunning =
 let stopwatchCurrentCategory =
     "";
 
+let stopwatchStartTimestamp =
+    null;
+
 
 function updateStopwatchDisplay() {
 
@@ -8279,6 +8282,118 @@ function saveCurrentStudyRecord() {
 }
 
 
+function saveStopwatchState() {
+
+    if (!stopwatchRunning || !stopwatchStartTimestamp) {
+        localStorage.removeItem("stopwatchState");
+        return;
+    }
+
+    localStorage.setItem(
+        "stopwatchState",
+        JSON.stringify({
+            running: true,
+            startTimestamp: stopwatchStartTimestamp,
+            category: stopwatchCurrentCategory
+        })
+    );
+}
+
+
+function restoreStopwatchState() {
+
+    const saved =
+        localStorage.getItem("stopwatchState");
+
+    if (!saved) {
+        stopwatchStartTimestamp = null;
+        return;
+    }
+
+    try {
+        const state = JSON.parse(saved);
+
+        if (
+            !state ||
+            state.running !== true ||
+            !Number.isFinite(Number(state.startTimestamp)) ||
+            !state.category
+        ) {
+            localStorage.removeItem("stopwatchState");
+            stopwatchStartTimestamp = null;
+            return;
+        }
+
+        const categoryExists =
+            categories.some(
+                function (category) {
+                    return category.name === state.category;
+                }
+            );
+
+        if (!categoryExists) {
+            localStorage.removeItem("stopwatchState");
+            stopwatchStartTimestamp = null;
+            return;
+        }
+
+        stopwatchStartTimestamp =
+            Number(state.startTimestamp);
+
+        stopwatchCurrentCategory =
+            state.category;
+
+        stopwatchSeconds =
+            Math.max(
+                0,
+                Math.floor(
+                    (Date.now() - stopwatchStartTimestamp) / 1000
+                )
+            );
+
+        stopwatchRunning = true;
+
+        if (stopwatchCategory) {
+            stopwatchCategory.value =
+                stopwatchCurrentCategory;
+            stopwatchCategory.disabled = true;
+        }
+
+        if (stopwatchStartButton) {
+            stopwatchStartButton.textContent =
+                "정지";
+        }
+
+        updateStopwatchDisplay();
+
+        clearInterval(stopwatchInterval);
+
+        stopwatchInterval =
+            setInterval(
+                function () {
+                    stopwatchSeconds =
+                        Math.max(
+                            0,
+                            Math.floor(
+                                (Date.now() - stopwatchStartTimestamp) / 1000
+                            )
+                        );
+
+                    updateStopwatchDisplay();
+                },
+                1000
+            );
+
+    } catch (error) {
+        localStorage.removeItem("stopwatchState");
+        stopwatchStartTimestamp = null;
+        stopwatchSeconds = 0;
+        stopwatchRunning = false;
+        stopwatchCurrentCategory = "";
+    }
+}
+
+
 function startStopwatch() {
 
     if (
@@ -8289,27 +8404,34 @@ function startStopwatch() {
             stopwatchInterval
         );
 
+        if (stopwatchStartTimestamp) {
+            stopwatchSeconds =
+                Math.max(
+                    0,
+                    Math.floor(
+                        (Date.now() - stopwatchStartTimestamp) / 1000
+                    )
+                );
+        }
 
         stopwatchRunning =
             false;
-
 
         saveCurrentStudyRecord();
 
         //초기화
         stopwatchSeconds = 0;
+        stopwatchStartTimestamp = null;
 
+        localStorage.removeItem("stopwatchState");
 
         updateStopwatchDisplay();
-
 
         stopwatchStartButton.textContent =
             "시작";
 
-
         stopwatchCategory.disabled =
             false;
-
 
         return;
     }
@@ -8331,9 +8453,13 @@ function startStopwatch() {
         stopwatchCategory.value;
 
 
+    stopwatchStartTimestamp =
+        Date.now();
+
     stopwatchRunning =
         true;
 
+    saveStopwatchState();
 
     stopwatchCategory.disabled =
         true;
@@ -8347,7 +8473,13 @@ function startStopwatch() {
         setInterval(
             function () {
 
-                stopwatchSeconds++;
+                stopwatchSeconds =
+                    Math.max(
+                        0,
+                        Math.floor(
+                            (Date.now() - stopwatchStartTimestamp) / 1000
+                        )
+                    );
 
                 updateStopwatchDisplay();
 
@@ -8373,6 +8505,11 @@ function resetStopwatch() {
 
     stopwatchCurrentCategory =
         "";
+
+    stopwatchStartTimestamp =
+        null;
+
+    localStorage.removeItem("stopwatchState");
 
 
     if (stopwatchCategory) {
@@ -8419,6 +8556,11 @@ if (stopwatchCategory) {
 
             stopwatchSeconds =
                 0;
+
+            stopwatchStartTimestamp =
+                null;
+
+            localStorage.removeItem("stopwatchState");
 
 
             updateStopwatchDisplay();
@@ -9823,7 +9965,7 @@ showProjects();
 // 스톱워치
 loadStopwatchCategories();
 
-updateStopwatchDisplay();
+restoreStopwatchState();
 
 showStudyRecords();
 
