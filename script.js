@@ -1508,6 +1508,7 @@ function clearElement(element) {
 function closeActionMenus() {
     document.querySelectorAll(".action-menu.open").forEach(function (menu) {
         menu.classList.remove("open");
+        menu.style.zIndex = "";
     });
 }
 
@@ -1547,7 +1548,11 @@ function createActionMenu(
         event.stopPropagation();
         const wasOpen = wrapper.classList.contains("open");
         closeActionMenus();
-        if (!wasOpen) wrapper.classList.add("open");
+        if (!wasOpen) {
+            wrapper.classList.add("open");
+            // 다른 Todo의 ⋮ 버튼이 열린 메뉴 위로 비치는 것을 막는다.
+            wrapper.style.zIndex = "1000";
+        }
     });
 
     if (todayButton) {
@@ -1578,9 +1583,10 @@ function createActionMenu(
         onDelete();
     });
 
+    // 메뉴 순서: 수정 → 오늘하기 → 날짜 바꾸기 → 삭제
+    menu.appendChild(editButton);
     if (todayButton) menu.appendChild(todayButton);
     if (changeDateButton) menu.appendChild(changeDateButton);
-    menu.appendChild(editButton);
     menu.appendChild(deleteButton);
 
     wrapper.appendChild(trigger);
@@ -3047,6 +3053,10 @@ function createTodoInputArea(
 // Todo - 오늘하기 / 날짜 바꾸기
 // ============================================================
 
+// 날짜 바꾸기 상태. 이 상태에서 기존 달력의 날짜를 클릭하면
+// 해당 Todo의 날짜가 그 날짜로 변경된다.
+let todoDateChangeTarget = null;
+
 function moveTodoToToday(
     category,
     todo
@@ -3063,83 +3073,20 @@ function moveTodoToToday(
 }
 
 
-function isValidTodoDateString(
-    dateString
-) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return false;
-    }
-
-    const date =
-        new Date(
-            dateString + "T00:00:00"
-        );
-
-    return (
-        !Number.isNaN(date.getTime()) &&
-        getDateString(date) === dateString
-    );
-}
-
-
 function changeTodoDate(
     category,
     todo
 ) {
-    while (true) {
-        const newDate = prompt(
-            "변경할 날짜를 입력하세요. (YYYY-MM-DD)",
-            todo.date || selectedDate
-        );
+    todoDateChangeTarget = {
+        category: category,
+        todo: todo
+    };
 
-        if (newDate === null) {
-            return;
-        }
-
-        const trimmedDate =
-            newDate.trim();
-
-        if (
-            !isValidTodoDateString(
-                trimmedDate
-            )
-        ) {
-            alert(
-                "올바른 날짜를 입력하세요. 예: 2026-09-26"
-            );
-            continue;
-        }
-
-        todo.date =
-            trimmedDate;
-
-        saveCategories();
-
-        selectedDate =
-            trimmedDate;
-
-        todoFilter =
-            trimmedDate === getTodayString()
-                ? "today"
-                : "date";
-
-        const date =
-            new Date(
-                trimmedDate + "T00:00:00"
-            );
-
-        currentYear =
-            date.getFullYear();
-
-        currentMonth =
-            date.getMonth();
-
-        updateTodoFilterButtons();
-        refreshTodoViews(true);
-
-        return;
-    }
+    alert(
+        "날짜를 바꿀 할 일을 선택했습니다.\n달력에서 원하는 날짜를 클릭하세요."
+    );
 }
+
 
 
 // ============================================================
@@ -4353,6 +4300,42 @@ function renderCalendar() {
         dayBox.addEventListener(
             "click",
             function () {
+
+                // 날짜 바꾸기 모드에서는 현재 달력의 클릭 날짜로
+                // 선택한 Todo의 날짜를 바로 변경한다.
+                if (todoDateChangeTarget) {
+                    const target =
+                        todoDateChangeTarget;
+
+                    target.todo.date =
+                        dateString;
+
+                    saveCategories();
+
+                    todoDateChangeTarget =
+                        null;
+
+                    selectedDate =
+                        dateString;
+
+                    todoFilter =
+                        dateString === getTodayString()
+                            ? "today"
+                            : "date";
+
+                    currentYear =
+                        date.getFullYear();
+
+                    currentMonth =
+                        date.getMonth();
+
+                    updateTodoFilterButtons();
+                    showTodos();
+                    showSchedules();
+                    renderCalendar();
+
+                    return;
+                }
 
                 selectedDate =
                     dateString;
