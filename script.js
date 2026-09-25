@@ -1511,16 +1511,35 @@ function closeActionMenus() {
     });
 }
 
-function createActionMenu(onEdit, onDelete) {
+function createActionMenu(
+    onEdit,
+    onDelete,
+    onToday,
+    onChangeDate
+) {
     const wrapper = createElement("div", "action-menu");
     const trigger = createElement("button", "action-menu-trigger", "⋮");
     const menu = createElement("div", "action-menu-list");
+
+    const todayButton =
+        onToday
+            ? createElement("button", "action-menu-item", "오늘하기")
+            : null;
+
+    const changeDateButton =
+        onChangeDate
+            ? createElement("button", "action-menu-item", "날짜 바꾸기")
+            : null;
+
     const editButton = createElement("button", "action-menu-item", "수정");
     const deleteButton = createElement("button", "action-menu-item", "삭제");
 
     trigger.type = "button";
     trigger.setAttribute("aria-label", "더보기");
     trigger.title = "더보기";
+
+    if (todayButton) todayButton.type = "button";
+    if (changeDateButton) changeDateButton.type = "button";
     editButton.type = "button";
     deleteButton.type = "button";
 
@@ -1530,6 +1549,22 @@ function createActionMenu(onEdit, onDelete) {
         closeActionMenus();
         if (!wasOpen) wrapper.classList.add("open");
     });
+
+    if (todayButton) {
+        todayButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            closeActionMenus();
+            onToday();
+        });
+    }
+
+    if (changeDateButton) {
+        changeDateButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            closeActionMenus();
+            onChangeDate();
+        });
+    }
 
     editButton.addEventListener("click", function (event) {
         event.stopPropagation();
@@ -1543,8 +1578,11 @@ function createActionMenu(onEdit, onDelete) {
         onDelete();
     });
 
+    if (todayButton) menu.appendChild(todayButton);
+    if (changeDateButton) menu.appendChild(changeDateButton);
     menu.appendChild(editButton);
     menu.appendChild(deleteButton);
+
     wrapper.appendChild(trigger);
     wrapper.appendChild(menu);
 
@@ -3006,6 +3044,105 @@ function createTodoInputArea(
 
 
 // ============================================================
+// Todo - 오늘하기 / 날짜 바꾸기
+// ============================================================
+
+function moveTodoToToday(
+    category,
+    todo
+) {
+    const today = getTodayString();
+
+    if (todo.date !== today) {
+        todo.date = today;
+        saveCategories();
+    }
+
+    // 오늘 날짜 화면으로 바로 이동
+    setTodoFilter("today");
+}
+
+
+function isValidTodoDateString(
+    dateString
+) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return false;
+    }
+
+    const date =
+        new Date(
+            dateString + "T00:00:00"
+        );
+
+    return (
+        !Number.isNaN(date.getTime()) &&
+        getDateString(date) === dateString
+    );
+}
+
+
+function changeTodoDate(
+    category,
+    todo
+) {
+    while (true) {
+        const newDate = prompt(
+            "변경할 날짜를 입력하세요. (YYYY-MM-DD)",
+            todo.date || selectedDate
+        );
+
+        if (newDate === null) {
+            return;
+        }
+
+        const trimmedDate =
+            newDate.trim();
+
+        if (
+            !isValidTodoDateString(
+                trimmedDate
+            )
+        ) {
+            alert(
+                "올바른 날짜를 입력하세요. 예: 2026-09-26"
+            );
+            continue;
+        }
+
+        todo.date =
+            trimmedDate;
+
+        saveCategories();
+
+        selectedDate =
+            trimmedDate;
+
+        todoFilter =
+            trimmedDate === getTodayString()
+                ? "today"
+                : "date";
+
+        const date =
+            new Date(
+                trimmedDate + "T00:00:00"
+            );
+
+        currentYear =
+            date.getFullYear();
+
+        currentMonth =
+            date.getMonth();
+
+        updateTodoFilterButtons();
+        refreshTodoViews(true);
+
+        return;
+    }
+}
+
+
+// ============================================================
 // 12. Todo - 개별 Todo
 // ============================================================
 
@@ -3327,7 +3464,9 @@ function createTodoItem(
 
     const actionMenu = createActionMenu(
         function () { editButton.click(); },
-        function () { deleteButton.click(); }
+        function () { deleteButton.click(); },
+        function () { moveTodoToToday(category, todo); },
+        function () { changeTodoDate(category, todo); }
     );
 
     item.classList.add(
