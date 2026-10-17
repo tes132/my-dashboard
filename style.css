@@ -3250,8 +3250,8 @@ body:not(.auth-locked) #accountBar {
 }
 
 #stopwatchSection #stopwatchCategory {
-    min-height: 48px;
-    padding: 9px 13px;
+    min-height: 44px;
+    padding: 7px 11px;
     font-size: 17px;
 }
 
@@ -3285,8 +3285,8 @@ body:not(.auth-locked) #accountBar {
     }
 
     #stopwatchSection #stopwatchCategory {
-        min-height: 48px;
-        padding: 8px 11px;
+        min-height: 42px;
+        padding: 6px 10px;
         font-size: 16px;
     }
 }
@@ -3324,9 +3324,10 @@ body:not(.auth-locked) #accountBar {
 
 #statsDailyGoalCard #dailyStudyGoal {
     margin-top: 4px;
-    align-self: flex-start;
+    display: block;
     width: 100%;
-    text-align: left;
+    align-self: stretch !important;
+    text-align: left !important;
 }
 
 #statsDailyGoalCard .study-goal-progress-track {
