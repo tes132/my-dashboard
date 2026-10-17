@@ -4742,7 +4742,8 @@ function applyMemoCardHeight() {
 function initMemoCardHeightControl() {
     applyMemoCardHeight();
 
-    if (!memoCardHeightSelect) return;
+    if (!memoCardHeightSelect || memoCardHeightSelect.dataset.bound === "true") return;
+    memoCardHeightSelect.dataset.bound = "true";
 
     memoCardHeightSelect.addEventListener("change", function () {
         const nextHeight = memoCardHeightSelect.value;
@@ -8973,19 +8974,11 @@ function getCategoryStudyTotals(period) {
 
 
 function updateCategoryStudyPeriodButtons() {
-
-    statsPeriodButtons.forEach(
-        function (button) {
-
-            button.classList.toggle(
-                "active",
-                button.dataset.period ===
-                categoryStudyPeriod
-            );
-
-        }
-    );
-
+    statsPeriodButtons.forEach(function (button) {
+        const active = button.dataset.period === categoryStudyPeriod;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
 }
 
 
@@ -9434,39 +9427,29 @@ function renderStudyYearCalendar() {
 
 
 // 카테고리별 기간 선택
-statsPeriodButtons.forEach(
-    function (button) {
-
-        button.addEventListener(
-            "click",
-            function () {
-
-                const period =
-                    button.dataset.period;
-
-
-                if (
-                    ![
-                        "day",
-                        "week",
-                        "month",
-                        "year"
-                    ].includes(period)
-                ) {
-                    return;
-                }
-
-
-                categoryStudyPeriod =
-                    period;
-
-                showStudyStats();
-
-            }
-        );
-
+function setCategoryStudyPeriod(period) {
+    if (!["day", "week", "month", "year"].includes(period)) {
+        return;
     }
-);
+
+    categoryStudyPeriod = period;
+    updateCategoryStudyPeriodButtons();
+    showStudyStats();
+}
+
+// 이벤트 위임으로 연결해 기간 버튼의 개별 리스너 상태에 의존하지 않는다.
+document.addEventListener("click", function (event) {
+    const target = event.target instanceof Element
+        ? event.target.closest(".stats-period-button")
+        : null;
+
+    if (!target) {
+        return;
+    }
+
+    event.preventDefault();
+    setCategoryStudyPeriod(target.dataset.period);
+}, true);
 
 
 // ============================================================
@@ -9489,15 +9472,26 @@ function showDailyStudyGoal() {
 
     const todaySeconds = getStudySecondsForDate(getTodayString());
     const goalSeconds = Math.max(1, Number(dailyStudyGoal) || 3600);
-    const percent = Math.round((todaySeconds / goalSeconds) * 100);
+    const exactPercent = (todaySeconds / goalSeconds) * 100;
+    const boundedPercent = Math.min(100, exactPercent);
+    const percentLabel = exactPercent < 1
+        ? exactPercent.toFixed(2)
+        : exactPercent < 10
+            ? exactPercent.toFixed(1)
+            : String(Math.round(exactPercent));
 
     if (dailyStudyGoalProgress) {
-        dailyStudyGoalProgress.style.width = `${Math.min(100, percent)}%`;
+        // 0초면 빈 게이지, 공부 시간이 조금이라도 있으면 최소 1%로 시각화한다.
+        const visibleWidth = todaySeconds > 0
+            ? Math.max(1, boundedPercent)
+            : 0;
+        dailyStudyGoalProgress.style.width = `${visibleWidth}%`;
+        dailyStudyGoalProgress.setAttribute("aria-valuenow", String(boundedPercent));
     }
 
     if (dailyStudyGoalProgressText) {
         dailyStudyGoalProgressText.textContent =
-            `${percent}% 달성 · ${formatStudyTime(todaySeconds)} / ${formatStudyTime(goalSeconds)}`;
+            `${percentLabel}% 달성 · ${formatStudyTime(todaySeconds)} / ${formatStudyTime(goalSeconds)}`;
     }
 }
 

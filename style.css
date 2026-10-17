@@ -2619,37 +2619,44 @@ body:not(.auth-locked) #accountBar {
 
 
 /* ============================================================
-   공부 목표 진행률 게이지
+   하루 공부 목표 진행 게이지
    ============================================================ */
 
 .study-goal-progress-track {
+    display: block;
+    position: relative;
     width: 100%;
-    height: 10px;
+    height: 14px;
     margin-top: 14px;
     overflow: hidden;
+    border: 1px solid #d3d9e0;
     border-radius: 999px;
-    background: #e9e9e9;
+    background: #e9edf2;
+    box-sizing: border-box;
 }
 
 .study-goal-progress-fill {
+    display: block;
     width: 0;
     height: 100%;
+    min-width: 0;
     border-radius: inherit;
-    background: #4a90e2;
+    background: linear-gradient(90deg, #6fa5e5, #2f72bb);
     transition: width 180ms ease;
 }
 
 .study-goal-progress-text {
     display: block;
-    margin-top: 7px;
-    color: #666;
-    font-size: 12px;
+    margin-top: 8px;
+    color: #536273;
+    font-size: 13px;
     line-height: 1.45;
     overflow-wrap: anywhere;
 }
 
 .stats-card:has(.study-goal-progress-track) {
     justify-content: flex-start;
+    gap: 4px;
 }
 
 .stats-card:has(.study-goal-progress-track) #dailyStudyGoal {
@@ -2831,17 +2838,57 @@ body:not(.auth-locked) #accountBar {
    스톱워치 카테고리 선택 영역 클릭 편의성
    ============================================================ */
 
-.stopwatch-category-wrap {
-    min-height: 56px;
-    margin-bottom: 24px;
+#stopwatchSection .stopwatch-category-wrap {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: min(900px, calc(100% - 24px));
+    min-height: 68px;
+    margin: 0 auto 28px;
+    box-sizing: border-box;
+}
+
+#stopwatchSection .stopwatch-category-color {
+    width: 16px;
+    height: 16px;
+    margin: 0;
 }
 
 #stopwatchSection #stopwatchCategory {
-    min-height: 52px;
-    padding: 10px 14px;
-    font-size: 16px;
-    border-radius: 9px;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 58px;
+    margin: 0;
+    padding: 12px 16px;
+    border: 1px solid #c8cfd8;
+    border-radius: 10px;
+    background-color: #fff;
+    font-size: 18px;
+    line-height: 1.4;
+    cursor: pointer;
     box-sizing: border-box;
+}
+
+#stopwatchSection #stopwatchCategory:focus-visible {
+    outline: 3px solid rgba(47, 114, 187, 0.3);
+    outline-offset: 2px;
+}
+
+@media (max-width: 550px) {
+    #stopwatchSection .stopwatch-category-wrap {
+        width: 100%;
+        min-height: 62px;
+        grid-template-columns: 16px minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    #stopwatchSection #stopwatchCategory {
+        min-height: 56px;
+        padding: 10px 12px;
+        font-size: 16px;
+    }
 }
 
 
@@ -2856,41 +2903,55 @@ body:not(.auth-locked) #accountBar {
     gap: 9px;
     margin-top: 14px;
     color: #666;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .memo-display-controls select {
-    min-height: 36px;
-    padding: 6px 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    min-height: 38px;
+    padding: 7px 10px;
+    border: 1px solid #c8cfd8;
+    border-radius: 7px;
     background: #fff;
     font: inherit;
     color: #333;
+    cursor: pointer;
+}
+
+.memo-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    align-content: start;
+    grid-auto-rows: max-content;
+    gap: 15px;
 }
 
 .memo-list[data-card-height="short"] .memo-card {
-    height: 160px;
+    height: 220px;
 }
 
 .memo-list[data-card-height="normal"] .memo-card {
-    height: 220px;
+    height: 320px;
 }
 
 .memo-list[data-card-height="tall"] .memo-card {
-    height: 290px;
+    height: 440px;
 }
 
 .memo-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     min-height: 0;
-    height: 220px;
+    height: 320px;
     box-sizing: border-box;
-    overflow: hidden;
 }
 
 .memo-card h3 {
+    flex: 0 0 auto;
     min-height: 0;
-    max-height: 42px;
+    max-height: 2.8em;
+    margin-bottom: 10px;
     overflow: hidden;
     overflow-wrap: anywhere;
     display: -webkit-box;
@@ -2900,6 +2961,7 @@ body:not(.auth-locked) #accountBar {
 
 .memo-preview {
     flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     overflow-wrap: anywhere;
@@ -2921,6 +2983,7 @@ body:not(.auth-locked) #accountBar {
 
 .memo-date {
     flex: 0 0 auto;
+    margin-top: auto;
 }
 
 @media (max-width: 850px) {
@@ -2968,5 +3031,17 @@ body:not(.auth-locked) #accountBar {
 
     .memo-list {
         grid-template-columns: 1fr;
+    }
+
+    .memo-list[data-card-height="short"] .memo-card {
+        height: 200px;
+    }
+
+    .memo-list[data-card-height="normal"] .memo-card {
+        height: 290px;
+    }
+
+    .memo-list[data-card-height="tall"] .memo-card {
+        height: 390px;
     }
 }
