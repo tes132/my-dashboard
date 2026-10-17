@@ -168,23 +168,14 @@
     <div id="memoSection" class="feature-section" style="display: none;">
 
         <div class="memo-header">
-
-            <h2>📝 메모</h2>
-
-            <button id="newMemoButton">
-                + 새 메모
-            </button>
-
-        </div>
-
-
-        <div class="memo-display-controls">
-            <label for="memoCardHeightSelect">카드 높이</label>
-            <select id="memoCardHeightSelect">
-                <option value="short">짧게</option>
-                <option value="normal" selected>보통</option>
-                <option value="tall">길게</option>
-            </select>
+            <div class="memo-header-left">
+                <h2>📝 메모</h2>
+                <div class="memo-display-controls">
+                    <label for="memoCardHeightInput">카드 높이(px)</label>
+                    <input id="memoCardHeightInput" type="number" min="140" max="900" step="10" value="320" inputmode="numeric" aria-label="메모 카드 높이 픽셀" />
+                </div>
+            </div>
+            <button id="newMemoButton">+ 새 메모</button>
         </div>
 
         <div id="memoList" class="memo-list"></div>
@@ -533,50 +524,29 @@
 
 
         <div class="stats-summary">
-
-            <div class="stats-card">
-
+            <div class="stats-card stats-study-summary-card">
                 <span>오늘 공부</span>
-
-                <strong id="todayStudyTime">
-                    0분
-                </strong>
-
+                <strong id="todayStudyTime">0분</strong>
+                <small id="todayStudyComparison" class="stats-comparison">어제와 비교 중…</small>
             </div>
 
-
-            <div class="stats-card">
-
+            <div class="stats-card stats-study-summary-card">
                 <span>이번 주 공부</span>
-
-                <strong id="weekStudyTime">
-                    0분
-                </strong>
-
+                <strong id="weekStudyTime">0분</strong>
+                <small id="weekStudyComparison" class="stats-comparison">지난주와 비교 중…</small>
             </div>
+        </div>
 
-
-            <div class="stats-card">
-
-                <div class="stats-card-header">
-                    <span>하루 목표</span>
-
-                    <button id="setStudyGoalButton">
-                        목표 설정
-                    </button>
-                </div>
-
-                <strong id="dailyStudyGoal">
-                    1시간
-                </strong>
-
-                <div class="study-goal-progress-track" role="progressbar" aria-label="오늘 공부 목표 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                    <div id="dailyStudyGoalProgress" class="study-goal-progress-fill" aria-hidden="true"></div>
-                </div>
-                <span id="dailyStudyGoalProgressText" class="study-goal-progress-text">0% 달성 · 0초 / 1시간</span>
-
+        <div id="statsDailyGoalCard" class="stats-card stats-goal-card">
+            <div class="stats-card-header">
+                <span>하루 목표</span>
+                <button id="setStudyGoalButton">목표 설정</button>
             </div>
-
+            <strong id="dailyStudyGoal">1시간</strong>
+            <div class="study-goal-progress-track" role="progressbar" aria-label="오늘 공부 목표 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="dailyStudyGoalProgress" class="study-goal-progress-fill" aria-hidden="true"></div>
+            </div>
+            <span id="dailyStudyGoalProgressText" class="study-goal-progress-text">0% 달성 · 0초 / 1시간</span>
         </div>
 
 

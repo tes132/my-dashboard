@@ -1722,8 +1722,8 @@ const weekFilter =
 const memoList =
     getElement("memoList");
 
-const memoCardHeightSelect =
-    getElement("memoCardHeightSelect");
+const memoCardHeightInput =
+    getElement("memoCardHeightInput");
 
 const memoEditor =
     getElement("memoEditor");
@@ -2020,6 +2020,12 @@ const todayStudyTime =
 
 const weekStudyTime =
     getElement("weekStudyTime");
+
+const todayStudyComparison =
+    getElement("todayStudyComparison");
+
+const weekStudyComparison =
+    getElement("weekStudyComparison");
 
 const dailyStudyGoalElement =
     getElement("dailyStudyGoal");
@@ -4719,38 +4725,69 @@ function showMemos() {
 
 
 // ============================================================
-// 메모 카드 높이 설정
+// 메모 카드 높이 설정 (직접 입력, px)
 // ============================================================
 
-function applyMemoCardHeight() {
-    const allowedHeights = ["short", "normal", "tall"];
-    let height = localStorage.getItem("memoCardHeight") || "normal";
+const DEFAULT_MEMO_CARD_HEIGHT = 320;
+const MIN_MEMO_CARD_HEIGHT = 140;
+const MAX_MEMO_CARD_HEIGHT = 900;
 
-    if (!allowedHeights.includes(height)) {
-        height = "normal";
+function normalizeMemoCardHeight(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+        return DEFAULT_MEMO_CARD_HEIGHT;
     }
+    const clamped = Math.max(MIN_MEMO_CARD_HEIGHT, Math.min(MAX_MEMO_CARD_HEIGHT, numeric));
+    return Math.round(clamped / 10) * 10;
+}
+
+function getStoredMemoCardHeight() {
+    const saved = localStorage.getItem("memoCardHeight");
+    // 이전 버전의 선택값도 숫자 높이로 변환해 기존 사용자의 설정을 최대한 유지한다.
+    const legacyHeights = { short: 220, normal: 320, tall: 440 };
+    if (saved && Object.prototype.hasOwnProperty.call(legacyHeights, saved)) {
+        return legacyHeights[saved];
+    }
+    return normalizeMemoCardHeight(saved || DEFAULT_MEMO_CARD_HEIGHT);
+}
+
+function applyMemoCardHeight() {
+    const height = getStoredMemoCardHeight();
 
     if (memoList) {
-        memoList.dataset.cardHeight = height;
+        memoList.dataset.cardHeight = String(height);
+        memoList.style.setProperty("--memo-card-height", `${height}px`);
     }
 
-    if (memoCardHeightSelect) {
-        memoCardHeightSelect.value = height;
+    if (memoCardHeightInput) {
+        memoCardHeightInput.value = String(height);
     }
 }
 
 function initMemoCardHeightControl() {
     applyMemoCardHeight();
 
-    if (!memoCardHeightSelect || memoCardHeightSelect.dataset.bound === "true") return;
-    memoCardHeightSelect.dataset.bound = "true";
+    if (!memoCardHeightInput || memoCardHeightInput.dataset.bound === "true") return;
+    memoCardHeightInput.dataset.bound = "true";
 
-    memoCardHeightSelect.addEventListener("change", function () {
-        const nextHeight = memoCardHeightSelect.value;
-        if (!["short", "normal", "tall"].includes(nextHeight)) return;
+    function commitMemoCardHeight() {
+        if (memoCardHeightInput.value.trim() === "") {
+            memoCardHeightInput.value = String(getStoredMemoCardHeight());
+            return;
+        }
 
-        localStorage.setItem("memoCardHeight", nextHeight);
+        const nextHeight = normalizeMemoCardHeight(memoCardHeightInput.value);
+        localStorage.setItem("memoCardHeight", String(nextHeight));
         applyMemoCardHeight();
+    }
+
+    memoCardHeightInput.addEventListener("change", commitMemoCardHeight);
+    memoCardHeightInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            memoCardHeightInput.blur();
+            commitMemoCardHeight();
+        }
     });
 }
 
@@ -9029,6 +9066,52 @@ function showStudyStats() {
             sundayString
         );
 
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdaySeconds = getStudySecondsForDate(getDateString(yesterday));
+    const yesterdayDifference = todaySeconds - yesterdaySeconds;
+
+    const previousWeekStart = new Date(monday);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+    // 공정하게 비교하려고 지난주의 같은 요일까지 누적 시간을 비교한다.
+    const todayDateForComparison = new Date();
+    todayDateForComparison.setHours(0, 0, 0, 0);
+    const elapsedWeekDays = Math.max(0, Math.min(6, Math.round(
+        (todayDateForComparison.getTime() - monday.getTime()) / 86400000
+    )));
+    const previousWeekEnd = new Date(previousWeekStart);
+    previousWeekEnd.setDate(previousWeekStart.getDate() + elapsedWeekDays);
+    const previousWeekSeconds = getStudySecondsForRange(
+        getDateString(previousWeekStart),
+        getDateString(previousWeekEnd)
+    );
+
+    if (todayStudyComparison) {
+        if (yesterdayDifference > 0) {
+            todayStudyComparison.textContent = `어제보다 +${formatStudyTime(yesterdayDifference)}`;
+            todayStudyComparison.dataset.trend = "up";
+        } else if (yesterdayDifference < 0) {
+            todayStudyComparison.textContent = `어제보다 −${formatStudyTime(Math.abs(yesterdayDifference))}`;
+            todayStudyComparison.dataset.trend = "down";
+        } else {
+            todayStudyComparison.textContent = "어제와 같은 공부시간";
+            todayStudyComparison.dataset.trend = "same";
+        }
+    }
+
+    if (weekStudyComparison) {
+        if (previousWeekSeconds > 0) {
+            const relativePercent = Math.round((weekSeconds / previousWeekSeconds) * 100);
+            weekStudyComparison.textContent = `지난주 대비 ${relativePercent}% 달성`;
+            weekStudyComparison.dataset.trend = relativePercent >= 100 ? "up" : "down";
+        } else if (weekSeconds > 0) {
+            weekStudyComparison.textContent = "지난주 기록 없음 · 이번 주 공부 시작!";
+            weekStudyComparison.dataset.trend = "up";
+        } else {
+            weekStudyComparison.textContent = "지난주 기록이 없어 비교할 수 없어요";
+            weekStudyComparison.dataset.trend = "same";
+        }
+    }
 
     if (todayStudyTime) {
 

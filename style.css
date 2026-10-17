@@ -2419,6 +2419,38 @@ button:hover {
 }
 
 @media (max-width: 550px) {
+    .study-year-calendar-panel {
+        padding: 10px;
+    }
+
+    .study-year-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .study-year-toolbar {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 5px;
+    }
+
+    .study-year-nav {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+
+    .study-year-title {
+        font-size: 16px;
+    }
+
+    .study-year-month {
+        padding: 10px 12px;
+    }
+
+    .study-year-day-empty,
+    .study-year-day {
+        min-height: 34px;
+        font-size: 12px;
+    }
+
     #stopwatchSection #stopwatchDisplay {
         font-size: 40px;
         letter-spacing: 1px;
@@ -2843,9 +2875,9 @@ body:not(.auth-locked) #accountBar {
     grid-template-columns: 18px minmax(0, 1fr);
     align-items: center;
     gap: 10px;
-    width: min(900px, calc(100% - 24px));
-    min-height: 68px;
-    margin: 0 auto 28px;
+    width: min(850px, calc(100% - 24px));
+    min-height: 62px;
+    margin: 0 auto 26px;
     box-sizing: border-box;
 }
 
@@ -2859,9 +2891,9 @@ body:not(.auth-locked) #accountBar {
     display: block;
     width: 100%;
     min-width: 0;
-    min-height: 58px;
+    min-height: 52px;
     margin: 0;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border: 1px solid #c8cfd8;
     border-radius: 10px;
     background-color: #fff;
@@ -2879,42 +2911,66 @@ body:not(.auth-locked) #accountBar {
 @media (max-width: 550px) {
     #stopwatchSection .stopwatch-category-wrap {
         width: 100%;
-        min-height: 62px;
+        min-height: 56px;
         grid-template-columns: 16px minmax(0, 1fr);
         gap: 8px;
     }
 
     #stopwatchSection #stopwatchCategory {
-        min-height: 56px;
-        padding: 10px 12px;
+        min-height: 50px;
+        padding: 9px 12px;
         font-size: 16px;
     }
 }
 
 
 /* ============================================================
-   메모 카드 높이: 모든 카드에 동일한 높이 적용
+   메모 카드 높이: 숫자로 지정한 동일 높이 적용
    ============================================================ */
+
+.memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.memo-header-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+}
 
 .memo-display-controls {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 9px;
-    margin-top: 14px;
+    justify-content: flex-start;
+    gap: 8px;
+    margin: 0;
     color: #666;
     font-size: 14px;
+    white-space: nowrap;
 }
 
-.memo-display-controls select {
+.memo-display-controls input {
+    width: 88px;
     min-height: 38px;
-    padding: 7px 10px;
+    padding: 7px 8px;
     border: 1px solid #c8cfd8;
     border-radius: 7px;
     background: #fff;
     font: inherit;
     color: #333;
-    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.memo-display-controls input:focus-visible {
+    outline: 2px solid rgba(47, 114, 187, 0.28);
+    outline-offset: 1px;
 }
 
 .memo-list {
@@ -2926,28 +2982,16 @@ body:not(.auth-locked) #accountBar {
     gap: 15px;
 }
 
-.memo-list[data-card-height="short"] .memo-card {
-    height: 220px;
-}
-
-.memo-list[data-card-height="normal"] .memo-card {
-    height: 320px;
-}
-
-.memo-list[data-card-height="tall"] .memo-card {
-    height: 440px;
-}
-
-.memo-card {
+.memo-list .memo-card {
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    height: 320px;
+    height: var(--memo-card-height, 320px);
     box-sizing: border-box;
 }
 
-.memo-card h3 {
+.memo-list .memo-card h3 {
     flex: 0 0 auto;
     min-height: 0;
     max-height: 2.8em;
@@ -2959,7 +3003,7 @@ body:not(.auth-locked) #accountBar {
     -webkit-box-orient: vertical;
 }
 
-.memo-preview {
+.memo-list .memo-preview {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
@@ -2970,20 +3014,107 @@ body:not(.auth-locked) #accountBar {
     line-height: 1.45;
 }
 
-.memo-preview p {
+.memo-list .memo-preview p {
     margin: 0 0 5px;
 }
 
-.memo-preview ul,
-.memo-preview ol {
+.memo-list .memo-preview ul,
+.memo-list .memo-preview ol {
     margin-top: 0;
     margin-bottom: 5px;
     padding-left: 20px;
 }
 
-.memo-date {
+.memo-list .memo-date {
     flex: 0 0 auto;
     margin-top: auto;
+}
+
+/* 오늘/이번 주 공부: 두 개의 컴팩트한 비교 카드 */
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 18px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.stats-study-summary-card {
+    display: grid;
+    grid-template-rows: auto minmax(48px, 1fr) auto;
+    gap: 8px;
+    min-height: 156px;
+    padding: 18px 22px;
+    justify-content: initial;
+}
+
+.stats-study-summary-card > span {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.stats-study-summary-card strong {
+    align-self: center;
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-comparison {
+    display: block;
+    min-height: 1.4em;
+    color: #657384;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.stats-comparison[data-trend="up"] {
+    color: #27804a;
+}
+
+.stats-comparison[data-trend="down"] {
+    color: #b45353;
+}
+
+.stats-goal-card {
+    margin-top: 16px;
+    min-height: 0;
+    padding: 16px 22px;
+    display: grid;
+    grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.3fr);
+    grid-template-rows: auto auto;
+    column-gap: 24px;
+    row-gap: 4px;
+    align-items: center;
+}
+
+.stats-goal-card .stats-card-header {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+#statsDailyGoalCard #dailyStudyGoal {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 4px;
+    align-self: start;
+}
+
+.stats-goal-card .study-goal-progress-track {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin: 0 0 4px;
+}
+
+.stats-goal-card .study-goal-progress-text {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 5px;
 }
 
 @media (max-width: 850px) {
@@ -2996,52 +3127,65 @@ body:not(.auth-locked) #accountBar {
     }
 }
 
-@media (max-width: 550px) {
-    .study-year-calendar-panel {
-        padding: 10px;
-    }
-
-    .study-year-grid {
+@media (max-width: 700px) {
+    .stats-summary {
         grid-template-columns: 1fr;
     }
 
-    .study-year-toolbar {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        gap: 5px;
+    #stopwatchSection #stopwatchDisplay {
+        min-height: 100px;
+        font-size: 48px;
     }
 
-    .study-year-nav {
-        padding: 8px 6px;
-        font-size: 12px;
+    .stats-goal-card {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 6px;
     }
 
-    .study-year-title {
-        font-size: 16px;
+    .stats-goal-card .stats-card-header,
+    .stats-goal-card #dailyStudyGoal,
+    .stats-goal-card .study-goal-progress-track,
+    .stats-goal-card .study-goal-progress-text {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}
+
+@media (max-width: 550px) {
+    #stopwatchSection #stopwatchDisplay {
+        font-size: 40px;
+        letter-spacing: 1px;
     }
 
-    .study-year-month {
-        padding: 10px 12px;
+    .stats-category-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .study-year-day-empty,
-    .study-year-day {
-        min-height: 34px;
-        font-size: 12px;
+    .memo-header {
+        align-items: flex-start;
+    }
+
+    .memo-header-left {
+        gap: 10px 14px;
+    }
+
+    #newMemoButton {
+        margin-left: auto;
     }
 
     .memo-list {
         grid-template-columns: 1fr;
     }
 
-    .memo-list[data-card-height="short"] .memo-card {
-        height: 200px;
+    .stats-study-summary-card {
+        min-height: 142px;
+        padding: 16px;
     }
 
-    .memo-list[data-card-height="normal"] .memo-card {
-        height: 290px;
-    }
-
-    .memo-list[data-card-height="tall"] .memo-card {
-        height: 390px;
+    .stats-study-summary-card strong {
+        font-size: 27px;
     }
 }
