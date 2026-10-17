@@ -3094,6 +3094,9 @@ body:not(.auth-locked) #accountBar {
 .stats-goal-card .stats-card-header {
     grid-column: 1;
     grid-row: 1;
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
 }
 
 #statsDailyGoalCard #dailyStudyGoal {
