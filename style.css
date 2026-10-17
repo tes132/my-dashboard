@@ -3324,6 +3324,9 @@ body:not(.auth-locked) #accountBar {
 
 #statsDailyGoalCard #dailyStudyGoal {
     margin-top: 4px;
+    align-self: flex-start;
+    width: 100%;
+    text-align: left;
 }
 
 #statsDailyGoalCard .study-goal-progress-track {
