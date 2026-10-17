@@ -3189,3 +3189,148 @@ body:not(.auth-locked) #accountBar {
         font-size: 27px;
     }
 }
+
+
+/* ============================================================
+   마지막 피드백: 메모 컨트롤 위치, 미리보기 스크롤,
+   스톱워치 선택 크기 소폭 축소, 통계 3열 배치 유지
+   ============================================================ */
+.memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.memo-header-left {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.memo-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-left: auto;
+    min-width: 0;
+}
+
+.memo-display-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* 카드 높이는 유지하되, 본문은 카드 내부에서 끝까지 스크롤 가능 */
+.memo-list .memo-preview {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+}
+
+/* 선택 상자를 직전 크기보다 아주 조금만 줄임 */
+#stopwatchSection .stopwatch-category-wrap {
+    min-height: 58px;
+    margin-bottom: 24px;
+}
+
+#stopwatchSection #stopwatchCategory {
+    min-height: 48px;
+    padding: 9px 13px;
+    font-size: 17px;
+}
+
+@media (max-width: 550px) {
+    .memo-header {
+        align-items: center;
+    }
+
+    .memo-header-actions {
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .memo-display-controls {
+        gap: 6px;
+        font-size: 13px;
+    }
+
+    .memo-display-controls input {
+        width: 76px;
+        min-height: 34px;
+        padding: 5px 7px;
+    }
+
+    #newMemoButton {
+        margin-left: 0;
+    }
+
+    #stopwatchSection .stopwatch-category-wrap {
+        min-height: 54px;
+    }
+
+    #stopwatchSection #stopwatchCategory {
+        min-height: 48px;
+        padding: 8px 11px;
+        font-size: 16px;
+    }
+}
+
+/* 통계 레이아웃은 오늘 / 이번 주 / 하루 목표의 기존 3열로 복원 */
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 18px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.stats-summary .stats-goal-card:has(.study-goal-progress-track) {
+    margin-top: 0;
+    min-height: 142px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    grid-template-columns: none;
+    grid-template-rows: none;
+}
+
+.stats-summary .stats-goal-card .stats-card-header,
+#statsDailyGoalCard #dailyStudyGoal,
+#statsDailyGoalCard .study-goal-progress-track,
+#statsDailyGoalCard .study-goal-progress-text {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: auto;
+}
+
+#statsDailyGoalCard #dailyStudyGoal {
+    margin-top: 4px;
+}
+
+#statsDailyGoalCard .study-goal-progress-track {
+    width: 100%;
+    margin: 4px 0 0;
+}
+
+#statsDailyGoalCard .study-goal-progress-text {
+    margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+    .stats-summary {
+        grid-template-columns: 1fr;
+    }
+}

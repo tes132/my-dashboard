@@ -4534,6 +4534,35 @@ function showMemos() {
             content.innerHTML =
                 memo.content || "";
 
+            // 메모 미리보기 안에서 스크롤할 때 카드 클릭으로
+            // 전체 메모 팝업이 갑자기 열리지 않도록 감지한다.
+            let memoPreviewPointerIsDown = false;
+            let memoPreviewPointerStartScrollTop = 0;
+            let memoPreviewWasScrolled = false;
+
+            content.addEventListener("pointerdown", function () {
+                memoPreviewPointerIsDown = true;
+                memoPreviewPointerStartScrollTop = content.scrollTop;
+                memoPreviewWasScrolled = false;
+            });
+
+            content.addEventListener("scroll", function () {
+                if (
+                    memoPreviewPointerIsDown &&
+                    Math.abs(content.scrollTop - memoPreviewPointerStartScrollTop) > 2
+                ) {
+                    memoPreviewWasScrolled = true;
+                }
+            }, { passive: true });
+
+            content.addEventListener("pointerup", function () {
+                memoPreviewPointerIsDown = false;
+            });
+
+            content.addEventListener("pointercancel", function () {
+                memoPreviewPointerIsDown = false;
+            });
+
 
             // ====================
             // 날짜
@@ -4602,6 +4631,16 @@ function showMemos() {
                         event.target.closest(".memo-drag-handle")
                     ) {
                         return;
+                    }
+
+                    if (event.target.closest(".memo-preview")) {
+                        const previewWasScrolled = memoPreviewWasScrolled;
+                        memoPreviewWasScrolled = false;
+
+                        // 스크롤 동작이나 스크롤바 조작은 팝업 열기로 취급하지 않는다.
+                        if (previewWasScrolled || event.target === content) {
+                            return;
+                        }
                     }
 
                     openMemoViewer(memo);
