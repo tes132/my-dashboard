@@ -1722,6 +1722,9 @@ const weekFilter =
 const memoList =
     getElement("memoList");
 
+const memoCardHeightSelect =
+    getElement("memoCardHeightSelect");
+
 const memoEditor =
     getElement("memoEditor");
 
@@ -2021,6 +2024,12 @@ const weekStudyTime =
 const dailyStudyGoalElement =
     getElement("dailyStudyGoal");
 
+const dailyStudyGoalProgress =
+    getElement("dailyStudyGoalProgress");
+
+const dailyStudyGoalProgressText =
+    getElement("dailyStudyGoalProgressText");
+
 const categoryStudyStats =
     getElement("categoryStudyStats");
 
@@ -2036,6 +2045,8 @@ const setStudyGoalButton =
 
 // 카테고리별 공부시간 기간
 let categoryStudyPeriod = "week";
+let studyCalendarYear = new Date().getFullYear();
+let selectedStudyDate = getTodayString();
 
 const statsPeriodButtons =
     document.querySelectorAll(".stats-period-button");
@@ -4450,6 +4461,7 @@ function showMemos() {
         return;
     }
 
+    applyMemoCardHeight();
 
     clearElement(
         memoList
@@ -4703,6 +4715,42 @@ function showMemos() {
         }
     );
 
+}
+
+
+// ============================================================
+// 메모 카드 높이 설정
+// ============================================================
+
+function applyMemoCardHeight() {
+    const allowedHeights = ["short", "normal", "tall"];
+    let height = localStorage.getItem("memoCardHeight") || "normal";
+
+    if (!allowedHeights.includes(height)) {
+        height = "normal";
+    }
+
+    if (memoList) {
+        memoList.dataset.cardHeight = height;
+    }
+
+    if (memoCardHeightSelect) {
+        memoCardHeightSelect.value = height;
+    }
+}
+
+function initMemoCardHeightControl() {
+    applyMemoCardHeight();
+
+    if (!memoCardHeightSelect) return;
+
+    memoCardHeightSelect.addEventListener("change", function () {
+        const nextHeight = memoCardHeightSelect.value;
+        if (!["short", "normal", "tall"].includes(nextHeight)) return;
+
+        localStorage.setItem("memoCardHeight", nextHeight);
+        applyMemoCardHeight();
+    });
 }
 
 
@@ -8854,6 +8902,14 @@ function getCategoryStudyRange(period) {
     }
 
 
+    if (period === "year") {
+        return {
+            startDate: getDateString(new Date(studyCalendarYear, 0, 1)),
+            endDate: getDateString(new Date(studyCalendarYear, 11, 31))
+        };
+    }
+
+
     // 1달 = 현재 달
     const firstDay =
         new Date(
@@ -9223,7 +9279,157 @@ function showStudyStats() {
     }
 
 
+    renderStudyYearCalendar();
     showDailyStudyGoal();
+}
+
+
+// ============================================================
+// 연간 공부 기록 달력
+// ============================================================
+
+function getCompactStudyTime(totalSeconds) {
+    const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) return `${hours}시간`;
+    if (minutes > 0) return `${minutes}분`;
+    return seconds > 0 ? `${seconds}초` : "";
+}
+
+function changeStudyCalendarYear(delta) {
+    const previousSelected = new Date(selectedStudyDate + "T00:00:00");
+    studyCalendarYear += delta;
+    const month = previousSelected.getMonth();
+    const day = Math.min(
+        previousSelected.getDate(),
+        new Date(studyCalendarYear, month + 1, 0).getDate()
+    );
+    selectedStudyDate = getDateString(new Date(studyCalendarYear, month, day));
+    showStudyStats();
+}
+
+function renderStudyYearCalendar() {
+    const panel = getElement("studyYearCalendarPanel");
+    if (!panel) return;
+
+    const shouldShow = categoryStudyPeriod === "year";
+    panel.style.display = shouldShow ? "block" : "none";
+    if (!shouldShow) return;
+
+    clearElement(panel);
+
+    const toolbar = createElement("div", "study-year-toolbar");
+    const previousButton = createElement("button", "study-year-nav", "‹ 이전 해");
+    const nextButton = createElement("button", "study-year-nav", "다음 해 ›");
+    const title = createElement("h4", "study-year-title", `${studyCalendarYear}년 공부 기록`);
+    previousButton.type = "button";
+    nextButton.type = "button";
+    previousButton.addEventListener("click", function () { changeStudyCalendarYear(-1); });
+    nextButton.addEventListener("click", function () { changeStudyCalendarYear(1); });
+    toolbar.appendChild(previousButton);
+    toolbar.appendChild(title);
+    toolbar.appendChild(nextButton);
+    panel.appendChild(toolbar);
+
+    const hint = createElement("p", "study-year-hint", "날짜를 선택하면 그날의 카테고리별 공부 기록을 확인할 수 있어요.");
+    panel.appendChild(hint);
+
+    const yearGrid = createElement("div", "study-year-grid");
+    const weekDays = ["월", "화", "수", "목", "금", "토", "일"];
+
+    for (let month = 0; month < 12; month++) {
+        const monthCard = createElement("section", "study-year-month");
+        const monthTitle = createElement("h5", "study-year-month-title", `${month + 1}월`);
+        const daysGrid = createElement("div", "study-year-days-grid");
+        monthCard.appendChild(monthTitle);
+
+        weekDays.forEach(function (dayName) {
+            daysGrid.appendChild(createElement("span", "study-year-weekday", dayName));
+        });
+
+        const firstDay = new Date(studyCalendarYear, month, 1);
+        const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
+        for (let emptyIndex = 0; emptyIndex < leadingEmptyDays; emptyIndex++) {
+            daysGrid.appendChild(createElement("span", "study-year-day-empty"));
+        }
+
+        const daysInMonth = new Date(studyCalendarYear, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = getDateString(new Date(studyCalendarYear, month, day));
+            const seconds = getStudySecondsForDate(date);
+            const dayButton = createElement("button", "study-year-day");
+            const dayNumber = createElement("span", "study-year-day-number", String(day));
+            const compactTime = getCompactStudyTime(seconds);
+            dayButton.appendChild(dayNumber);
+            if (compactTime) {
+                dayButton.appendChild(createElement("span", "study-year-day-time", compactTime));
+            }
+            dayButton.type = "button";
+            dayButton.title = `${date} · 공부 ${formatStudyTime(seconds)}`;
+            dayButton.setAttribute("aria-label", `${date}, 공부 ${formatStudyTime(seconds)}`);
+
+            if (seconds > 0) {
+                dayButton.classList.add("has-study");
+                if (seconds >= 3 * 3600) dayButton.classList.add("study-level-3");
+                else if (seconds >= 3600) dayButton.classList.add("study-level-2");
+                else dayButton.classList.add("study-level-1");
+            }
+            if (date === selectedStudyDate) dayButton.classList.add("selected");
+            if (date === getTodayString()) dayButton.classList.add("today");
+
+            dayButton.addEventListener("click", function () {
+                selectedStudyDate = date;
+                renderStudyYearCalendar();
+            });
+            daysGrid.appendChild(dayButton);
+        }
+
+        monthCard.appendChild(daysGrid);
+        yearGrid.appendChild(monthCard);
+    }
+
+    panel.appendChild(yearGrid);
+
+    const detail = createElement("section", "study-year-date-detail");
+    const selectedDateTitle = createElement("h4", "study-year-detail-title", `${selectedStudyDate} 공부 기록`);
+    const selectedRecords = studyRecords.filter(function (record) {
+        return record.date === selectedStudyDate;
+    });
+    const selectedSeconds = getStudySecondsForDate(selectedStudyDate);
+    const summary = createElement(
+        "p",
+        "study-year-detail-summary",
+        `총 공부시간 ${formatStudyTime(selectedSeconds)} · 기록 ${selectedRecords.length}개`
+    );
+    detail.appendChild(selectedDateTitle);
+    detail.appendChild(summary);
+
+    if (selectedRecords.length === 0) {
+        detail.appendChild(createElement("p", "study-year-no-records", "이 날짜에는 저장된 공부 기록이 없습니다."));
+    } else {
+        const recordList = createElement("div", "study-year-record-list");
+        selectedRecords.forEach(function (record) {
+            const row = createElement("div", "study-year-record-row");
+            const dot = createElement("span", "stats-color-dot");
+            const category = getCategoryByName(record.category);
+            dot.style.backgroundColor = category
+                ? (category.color || getDefaultCategoryColor(categories.indexOf(category)))
+                : "#999";
+            const recordText = createElement(
+                "span",
+                "study-year-record-text",
+                `${record.category || "카테고리 없음"} · ${formatStudyTime(record.seconds)}`
+            );
+            row.appendChild(dot);
+            row.appendChild(recordText);
+            recordList.appendChild(row);
+        });
+        detail.appendChild(recordList);
+    }
+
+    panel.appendChild(detail);
 }
 
 
@@ -9243,7 +9449,8 @@ statsPeriodButtons.forEach(
                     ![
                         "day",
                         "week",
-                        "month"
+                        "month",
+                        "year"
                     ].includes(period)
                 ) {
                     return;
@@ -9279,6 +9486,19 @@ function showDailyStudyGoal() {
         formatStudyTime(
             dailyStudyGoal
         );
+
+    const todaySeconds = getStudySecondsForDate(getTodayString());
+    const goalSeconds = Math.max(1, Number(dailyStudyGoal) || 3600);
+    const percent = Math.round((todaySeconds / goalSeconds) * 100);
+
+    if (dailyStudyGoalProgress) {
+        dailyStudyGoalProgress.style.width = `${Math.min(100, percent)}%`;
+    }
+
+    if (dailyStudyGoalProgressText) {
+        dailyStudyGoalProgressText.textContent =
+            `${percent}% 달성 · ${formatStudyTime(todaySeconds)} / ${formatStudyTime(goalSeconds)}`;
+    }
 }
 
 
@@ -10068,6 +10288,9 @@ renderCalendar();
 showTodos();
 
 
+// 메모 카드 높이 설정
+initMemoCardHeightControl();
+
 // 메모
 showMemos();
 
@@ -10129,5 +10352,3 @@ setInterval(
 // ============================================================
 // END
 // ============================================================
-
-

@@ -178,6 +178,15 @@
         </div>
 
 
+        <div class="memo-display-controls">
+            <label for="memoCardHeightSelect">카드 높이</label>
+            <select id="memoCardHeightSelect">
+                <option value="short">짧게</option>
+                <option value="normal" selected>보통</option>
+                <option value="tall">길게</option>
+            </select>
+        </div>
+
         <div id="memoList" class="memo-list"></div>
 
 
@@ -561,6 +570,11 @@
                     1시간
                 </strong>
 
+                <div class="study-goal-progress-track" aria-label="오늘 공부 목표 진행률">
+                    <div id="dailyStudyGoalProgress" class="study-goal-progress-fill"></div>
+                </div>
+                <span id="dailyStudyGoalProgressText" class="study-goal-progress-text">0% 달성 · 0초 / 1시간</span>
+
             </div>
 
         </div>
@@ -586,9 +600,15 @@
                         1달
                     </button>
 
+                    <button type="button" class="stats-period-button" data-period="year">
+                        1년
+                    </button>
+
                 </div>
 
             </div>
+
+            <div id="studyYearCalendarPanel" class="study-year-calendar-panel" style="display: none;"></div>
 
             <div class="stats-category-content">
 
@@ -767,6 +787,3 @@
 
 
     <script type="module" src="script.js"></script>
-
-
-
