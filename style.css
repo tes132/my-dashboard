@@ -3003,17 +3003,6 @@ body:not(.auth-locked) #accountBar {
     -webkit-box-orient: vertical;
 }
 
-.memo-list .memo-preview {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-    color: #555;
-    font-size: 14px;
-    line-height: 1.45;
-}
-
 .memo-list .memo-preview p {
     margin: 0 0 5px;
 }
@@ -3235,14 +3224,20 @@ body:not(.auth-locked) #accountBar {
 
 /* 카드 높이는 유지하되, 본문은 카드 내부에서 끝까지 스크롤 가능 */
 .memo-list .memo-preview {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
+    overflow-wrap: anywhere;
     overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-gutter: stable;
     padding-right: 4px;
+    color: #555;
+    font-size: 15px;
+    line-height: 1.5;
 }
-
 /* 선택 상자를 직전 크기보다 아주 조금만 줄임 */
 #stopwatchSection .stopwatch-category-wrap {
     min-height: 58px;
