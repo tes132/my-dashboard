@@ -2838,12 +2838,28 @@ function createCategoryBox(
         );
 
 
+    // 현재 카테고리 객체를 DOM 요소에 연결해 순서 저장에 사용한다.
+    categoryBox.classList.add("category-reorderable");
+    categoryBox._category = category;
+
     const title =
         createElement(
             "h3",
             "",
             category.name
         );
+
+    // 드래그 손잡이: 이 부분을 끌어서 카테고리 순서를 변경한다.
+    const dragHandle =
+        createElement(
+            "span",
+            "category-drag-handle",
+            ":::"
+        );
+
+    dragHandle.draggable = true;
+    dragHandle.title = "드래그하여 카테고리 순서 변경";
+    dragHandle.setAttribute("aria-label", `${category.name} 카테고리 순서 변경`);
 
     const colorInput =
         createElement(
@@ -2952,14 +2968,101 @@ function createCategoryBox(
 
 
     header.appendChild(title);
+    header.appendChild(dragHandle);
     header.appendChild(colorInput);
     header.appendChild(addButton);
     header.appendChild(deleteButton);
 
     categoryBox.appendChild(header);
 
+    // 데스크톱 마우스 드래그 정렬
+    dragHandle.addEventListener("dragstart", function (event) {
+        event.stopPropagation();
+        categoryBox.classList.add("dragging");
+
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", category.name);
+        }
+    });
+
+    dragHandle.addEventListener("dragend", function () {
+        categoryBox.classList.remove("dragging");
+        document.querySelectorAll(".category-drop-target").forEach(function (element) {
+            element.classList.remove("category-drop-target");
+        });
+        saveCategoryOrder();
+    });
+
+    categoryBox.addEventListener("dragover", function (event) {
+        event.preventDefault();
+
+        const dragging = categoryList.querySelector(
+            ".category.category-reorderable.dragging"
+        );
+
+        if (!dragging || dragging === categoryBox) return;
+
+        event.dataTransfer.dropEffect = "move";
+        categoryBox.classList.add("category-drop-target");
+
+        const rect = categoryBox.getBoundingClientRect();
+        const insertAfter = event.clientY >= rect.top + rect.height / 2;
+
+        if (insertAfter) {
+            if (categoryBox.nextElementSibling !== dragging) {
+                categoryList.insertBefore(dragging, categoryBox.nextSibling);
+            }
+        } else if (dragging.nextElementSibling !== categoryBox) {
+            categoryList.insertBefore(dragging, categoryBox);
+        }
+    });
+
+    categoryBox.addEventListener("dragleave", function (event) {
+        if (!categoryBox.contains(event.relatedTarget)) {
+            categoryBox.classList.remove("category-drop-target");
+        }
+    });
+
+    categoryBox.addEventListener("drop", function (event) {
+        event.preventDefault();
+        categoryBox.classList.remove("category-drop-target");
+    });
 
     return categoryBox;
+}
+
+// DOM에 표시된 순서를 categories 배열에 반영한다.
+// categories 배열을 그대로 저장하므로 LocalStorage와 Firebase 동기화에도 유지된다.
+function saveCategoryOrder() {
+    if (!categoryList) return;
+
+    const categoryBoxes = Array.from(
+        categoryList.querySelectorAll(":scope > .category.category-reorderable")
+    );
+
+    const reorderedCategories = categoryBoxes
+        .map(function (box) {
+            return box._category;
+        })
+        .filter(Boolean);
+
+    // 주간 뷰 등 카테고리 전체가 표시되지 않는 화면에서는 저장하지 않는다.
+    if (reorderedCategories.length !== categories.length) return;
+
+    const orderChanged = reorderedCategories.some(function (category, index) {
+        return categories[index] !== category;
+    });
+
+    if (!orderChanged) return;
+
+    categories = reorderedCategories;
+    saveCategories();
+    refreshTodoViews(true);
+    loadStopwatchCategories();
+    showStudyRecords();
+    showStudyStats();
+    showWeeklyStudyChart();
 }
 
 
@@ -10250,7 +10353,7 @@ function enableTouchReorder(listElement, cardSelector, saveOrder) {
             if (touchCard) return;
 
             const handle = event.target.closest(
-                ".memo-drag-handle, .dday-drag-handle, .project-drag-handle"
+                ".memo-drag-handle, .dday-drag-handle, .project-drag-handle, .category-drag-handle"
             );
 
             if (!handle) return;
@@ -10379,6 +10482,13 @@ enableTouchReorder(
     projectList,
     ".project-item",
     saveProjectOrder
+);
+
+// Todo 카테고리: 모바일 / iPad 터치 드래그 정렬
+enableTouchReorder(
+    categoryList,
+    ".category.category-reorderable",
+    saveCategoryOrder
 );
 
 // ============================================================
