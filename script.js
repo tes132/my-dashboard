@@ -2967,10 +2967,10 @@ function createCategoryBox(
     );
 
 
-    // 헤더 순서: 드래그 손잡이 → 색상 → 카테고리명 → 추가/삭제 버튼
-    header.appendChild(dragHandle);
-    header.appendChild(colorInput);
+    // 헤더 순서: 카테고리명 → 색상 → 드래그 손잡이 → 오른쪽 추가/삭제 버튼
     header.appendChild(title);
+    header.appendChild(colorInput);
+    header.appendChild(dragHandle);
     header.appendChild(addButton);
     header.appendChild(deleteButton);
 
